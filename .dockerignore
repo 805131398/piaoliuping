@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+pnpm-lock.yaml
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store
+
+# Build output
+.next
+out
+.nextcache
+
+# Local env
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+
+# VCS
+.git
+.gitignore
+
+# Misc
+*.swp
+*.DS_Store
+*.zip
+
+# Repo working dir used by app
+.repos
+
+# 文档和测试
+README.md
+docs/
+*.md
+!prisma/*.md
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+
+# 小程序 UI (单独部署)
+mini-app-ui/
+
+# 脚本和备份
+scripts/
+pgsql-bak/
+*.sh
+

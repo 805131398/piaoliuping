@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 用户表
+model User {
+  /// 用户ID
+  id            String     @id @default(cuid())
+  /// 用户名
+  name          String?
+  /// 邮箱
+  email         String?    @unique
+  /// 邮箱验证时间
+  emailVerified DateTime?
+  /// 头像URL
+  image         String?
+  /// 手机号
+  phone         String?    @unique
+  /// 微信小程序 openid
+  openid        String?    @unique
+  /// 微信开放平台 unionid
+  unionid       String?    @unique
+  /// 头像种子
+  avatarSeed    String?
+  /// 头像风格
+  avatarStyle   String?
+  /// 头像类型
+  avatarType    String?
+  /// 是否激活
+  isActive      Boolean    @default(true)
+  /// 创建时间
+  createdAt     DateTime   @default(now())
+  /// 更新时间
+  updatedAt     DateTime   @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  roles         UserRole[]
+
+  @@map("users")
+}
+
+/// 第三方账号关联表
+model Account {
+  /// 账号ID
+  id                String  @id @default(cuid())
+  /// 用户ID
+  userId            String
+  /// 账号类型
+  type              String
+  /// 提供商
+  provider          String
+  /// 提供商账号ID
+  providerAccountId String
+  /// 刷新令牌
+  refresh_token     String?
+  /// 访问令牌
+  access_token      String?
+  /// 过期时间戳
+  expires_at        Int?
+  /// 令牌类型
+  token_type        String?
+  /// 授权范围
+  scope             String?
+  /// ID令牌
+  id_token          String?
+  /// 会话状态
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+/// 会话表
+model Session {
+  /// 会话ID
+  id           String   @id @default(cuid())
+  /// 会话令牌
+  sessionToken String   @unique
+  /// 用户ID
+  userId       String
+  /// 过期时间
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+/// 验证令牌表
+model VerificationToken {
+  /// 标识符
+  identifier String
+  /// 令牌
+  token      String   @unique
+  /// 过期时间
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+/// 菜单类型枚举
+enum MenuType {
+  /// 目录（分组）
+  DIRECTORY
+  /// 菜单（可点击）
+  MENU
+}
+
+/// 菜单表
+model Menu {
+  /// 菜单ID
+  id        String     @id @default(cuid())
+  /// 菜单名称
+  label     String
+  /// 菜单类型
+  type      MenuType   @default(MENU)
+  /// 图标
+  icon      String?
+  /// 链接地址
+  href      String?
+  /// 父级菜单ID
+  parentId  String?
+  /// 排序
+  order     Int        @default(0)
+  /// 是否可见
+  visible   Boolean    @default(true)
+  /// 创建时间
+  createdAt DateTime   @default(now())
+  /// 更新时间
+  updatedAt DateTime   @updatedAt
+  parent    Menu?      @relation("MenuToMenu", fields: [parentId], references: [id], onDelete: Cascade)
+  children  Menu[]     @relation("MenuToMenu")
+  roles     RoleMenu[]
+
+  @@index([parentId])
+  @@index([order])
+  @@map("menus")
+}
+
+/// 角色表
+model Role {
+  /// 角色ID
+  id          String           @id @default(cuid())
+  /// 角色名称
+  name        String           @unique
+  /// 角色描述
+  description String?
+  /// 创建时间
+  createdAt   DateTime         @default(now())
+  /// 更新时间
+  updatedAt   DateTime         @updatedAt
+  menus       RoleMenu[]
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+/// 权限表
+model Permission {
+  /// 权限ID
+  id          String           @id @default(cuid())
+  /// 权限名称
+  name        String           @unique
+  /// 权限描述
+  description String?
+  /// 资源名称，如：user, role, menu
+  resource    String
+  /// 操作类型，如：create, read, update, delete
+  action      String
+  /// 创建时间
+  createdAt   DateTime         @default(now())
+  /// 更新时间
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+/// 用户角色关联表
+model UserRole {
+  /// 关联ID
+  id        String   @id @default(cuid())
+  /// 用户ID
+  userId    String
+  /// 角色ID
+  roleId    String
+  /// 创建时间
+  createdAt DateTime @default(now())
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+/// 角色权限关联表
+model RolePermission {
+  /// 关联ID
+  id           String     @id @default(cuid())
+  /// 角色ID
+  roleId       String
+  /// 权限ID
+  permissionId String
+  /// 创建时间
+  createdAt    DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+/// 角色菜单关联表
+model RoleMenu {
+  /// 关联ID
+  id        String   @id @default(cuid())
+  /// 角色ID
+  roleId    String
+  /// 菜单ID
+  menuId    String
+  /// 创建时间
+  createdAt DateTime @default(now())
+  menu      Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, menuId])
+  @@index([roleId])
+  @@index([menuId])
+  @@map("role_menus")
+}
+
+/// 配置分类表
+model ConfigCategory {
+  /// 分类ID
+  id          String   @id @default(cuid())
+  /// 分类标识，如 auth, email, storage
+  value       String   @unique
+  /// 分类显示名称，如 "认证配置"
+  label       String
+  /// 分类描述
+  description String?
+  /// 排序
+  order       Int      @default(0)
+  /// 创建时间
+  createdAt   DateTime @default(now())
+  /// 更新时间
+  updatedAt   DateTime @updatedAt
+  configs     Config[]
+
+  @@index([order])
+  @@map("config_categories")
+}
+
+/// 系统配置参数表
+model Config {
+  /// 配置ID
+  id          String          @id @default(cuid())
+  /// 配置键
+  key         String          @unique
+  /// 配置值
+  value       String?
+  /// 配置描述
+  description String?
+  /// 关联分类ID
+  categoryId  String?
+  /// 是否为敏感信息
+  isSecret    Boolean         @default(false)
+  /// 创建时间
+  createdAt   DateTime        @default(now())
+  /// 更新时间
+  updatedAt   DateTime        @updatedAt
+  category    ConfigCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@index([key])
+  @@map("configs")
+}

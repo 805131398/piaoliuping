@@ -1,0 +1,106 @@
+
+// ... existing schema ...
+
+/// 泡泡原型表（可复用）
+model GameBubble {
+  /// 泡泡ID
+  id          String   @id @default(cuid())
+  /// 泡泡名称
+  name        String
+  /// 泡泡描述
+  description String?
+  /// 泡泡类型：IMAGE, EMOJI, COLOR
+  type        String   @default("IMAGE")
+  /// 泡泡内容：图片URL、Emoji字符、颜色代码
+  content     String
+  
+  // ================= 属性组 (JSON) =================
+  
+  /// 视觉属性：color, size, opacity, glossiness, texture, outline, animations...
+  visualProps    Json?
+  /// 物理属性：position, velocity, gravityScale, drag, collisionRadius...
+  physicsProps   Json?
+  /// 逻辑属性：clickable, popOnClick, popThreshold, spawnDelay...
+  logicProps     Json?
+  /// 生命周期：birthTime, aliveTime, fadeInTime, fadeOutTime...
+  lifeCycleProps Json?
+  /// 游戏化属性：scoreValue, comboType, buffType...
+  gameplayProps  Json?
+  
+  /// 是否启用
+  isActive    Boolean  @default(true)
+  /// 创建时间
+  createdAt   DateTime @default(now())
+  /// 更新时间
+  updatedAt   DateTime @updatedAt
+
+  /// 关联的主题泡泡
+  themeBubbles ThemeBubble[]
+
+  @@map("game_bubbles")
+}
+
+// ... existing ThemeBubble (modified) ...
+
+/// 主题泡泡关联表
+model ThemeBubble {
+  /// 关联ID
+  id        String    @id @default(cuid())
+  
+  /// 所属主题ID
+  themeId   String
+  theme     GameTheme @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  
+  /// 关联的泡泡原型ID
+  bubbleId  String
+  bubble    GameBubble @relation(fields: [bubbleId], references: [id], onDelete: Cascade)
+  
+  /// 关联的音效（多对多）
+  sounds    BubbleSound[]
+  
+  /// 是否启用
+  isActive  Boolean   @default(true)
+  /// 排序
+  order     Int       @default(0)
+  
+  /// 创建时间
+  createdAt DateTime  @default(now())
+  /// 更新时间
+  updatedAt DateTime  @updatedAt
+
+  @@index([themeId])
+  @@index([bubbleId])
+  @@map("theme_bubbles")
+}
+
+// ... Update BubbleSound to include relation ...
+
+/// 气泡声音表
+model BubbleSound {
+  // ... keep existing fields ...
+  /// 声音ID
+  id          String   @id @default(cuid())
+  /// 声音名称
+  name        String
+  /// 声音文件URL
+  url         String
+  /// 文件大小（字节）
+  size        Int
+  /// 文件类型
+  mimeType    String
+  /// 是否启用
+  isActive    Boolean  @default(true)
+  /// 排序
+  order       Int      @default(0)
+  /// 创建时间
+  createdAt   DateTime @default(now())
+  /// 更新时间
+  updatedAt   DateTime @updatedAt
+
+  /// 关联的主题泡泡
+  themeBubbles ThemeBubble[]
+
+  @@index([isActive])
+  @@index([order])
+  @@map("bubble_sounds")
+}
