@@ -9,10 +9,10 @@ export default function Home() {
         <main className="flex flex-col items-center justify-center gap-8 text-center">
           <div className="space-y-4">
             <h1 className="text-5xl sm:text-6xl font-bold tracking-tight">
-              Piaoliuping
+              漂流瓶
             </h1>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl">
-              面向语言学习项目的基础工程，保留后台管理、认证、数据库、小程序壳子与可复用系统能力。
+              面向漂流瓶项目的基础工程，保留后台管理、认证、数据库、小程序壳子与可复用系统能力。
             </p>
           </div>
 
@@ -63,7 +63,7 @@ export default function Home() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <h3 className="font-semibold text-lg mb-2">小程序壳子</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                小程序首页、我的页和登录链路保留，适合继续接入语言学习场景。
+                小程序首页、我的页和登录链路保留，适合继续接入漂流瓶场景。
               </p>
             </div>
             

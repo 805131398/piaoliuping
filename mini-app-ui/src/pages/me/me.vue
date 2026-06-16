@@ -1,13 +1,19 @@
 <script lang="ts" setup>
-import { computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
 import { useUserStore } from '@/store'
 import { useTokenStore } from '@/store/token'
 
+defineOptions({
+  name: 'TideHouse',
+})
+
 definePage({
   style: {
-    navigationBarTitleText: '我的',
+    navigationBarTitleText: '听潮小筑',
+    navigationBarBackgroundColor: '#eef8fb',
+    navigationBarTextStyle: 'black',
   },
 })
 
@@ -23,13 +29,8 @@ onShow(() => {
   }
 })
 
-const displayName = computed(() => {
-  return userInfo.value.nickname || userInfo.value.username || '未登录用户'
-})
-
-const contactText = computed(() => {
-  return userInfo.value.phonenumber || userInfo.value.email || '未绑定联系方式'
-})
+const displayName = computed(() => userInfo.value.nickname || userInfo.value.username || '云深')
+const signature = computed(() => tokenStore.hasLogin ? '聆听潮汐的声音' : '登录后收藏你的海笺与回音')
 
 function goToLogin() {
   uni.navigateTo({ url: '/pages-fg/login/login' })
@@ -42,7 +43,7 @@ function goToSettings() {
 async function handleLogout() {
   try {
     await tokenStore.logout()
-    uni.showToast({ title: '已退出登录', icon: 'success' })
+    uni.showToast({ title: '已离开小筑', icon: 'success' })
   }
   catch (error) {
     console.error('退出登录失败:', error)
@@ -52,61 +53,95 @@ async function handleLogout() {
 </script>
 
 <template>
-  <view class="page">
+  <view class="me-page">
     <view class="profile-card">
       <image class="avatar" :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
-      <view class="profile-meta">
+      <view class="profile-main">
         <text class="name">{{ displayName }}</text>
-        <text class="sub">{{ contactText }}</text>
+        <text class="signature">{{ signature }}</text>
       </view>
     </view>
 
-    <view class="panel">
-      <text class="panel-title">基础账户能力</text>
-      <view class="row">
-        <text class="label">登录状态</text>
-        <text class="value">{{ tokenStore.hasLogin ? '已登录' : '未登录' }}</text>
+    <view class="stats">
+      <view class="stat">
+        <text class="num">24</text>
+        <text class="label">投递</text>
       </view>
-      <view class="row">
-        <text class="label">用户资料</text>
-        <text class="value">已保留头像、昵称、手机号编辑能力</text>
+      <view class="stat">
+        <text class="num">12</text>
+        <text class="label">捞起</text>
       </view>
-      <view class="row">
-        <text class="label">扩展字段</text>
-        <text class="value">积分/VIP 字段仍保留在后端模型中</text>
+      <view class="stat">
+        <text class="num">156</text>
+        <text class="label">陪伴</text>
       </view>
     </view>
 
-    <view class="panel">
-      <text class="panel-title">后续开发提示</text>
-      <text class="hint">
-        当前小程序已移除历史打卡业务，只保留通用壳子。你可以在此基础上接入课程、单词、学习计划和会员体系等语言学习模块。
-      </text>
+    <view class="skin-card">
+      <view class="section-head">
+        <text class="section-title">我的风格</text>
+        <text class="change">更换</text>
+      </view>
+      <view class="skin-body">
+        <view class="skin-preview">
+          <view class="mini-bottle" />
+        </view>
+        <view class="skin-info">
+          <text class="skin-name">海洋耳语</text>
+          <text class="skin-desc">透亮的玻璃瓶，内嵌陈旧的羊皮纸，瓶口由天蓝色火漆密封。</text>
+          <view class="tags">
+            <text>#稀有</text>
+            <text>#蔚蓝</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="settings-card">
+      <text class="section-title">设置与隐私</text>
+      <view class="row" @tap="tokenStore.hasLogin ? goToSettings() : goToLogin()">
+        <text>账号设置</text>
+        <text class="chevron">进入</text>
+      </view>
+      <view class="row">
+        <text>通知提醒</text>
+        <text class="chevron">已开启</text>
+      </view>
+      <view class="row">
+        <text>清理缓存</text>
+        <text class="chevron">124 MB</text>
+      </view>
     </view>
 
     <view class="actions">
-      <button v-if="tokenStore.hasLogin" class="action-btn primary" @tap="goToSettings">编辑资料</button>
-      <button v-if="tokenStore.hasLogin" class="action-btn ghost" @tap="handleLogout">退出登录</button>
-      <button v-else class="action-btn primary" @tap="goToLogin">立即登录</button>
+      <button v-if="tokenStore.hasLogin" class="danger" @tap="handleLogout">
+        离开听潮小筑
+      </button>
+      <button v-else class="primary" @tap="goToLogin">
+        进入听潮小筑
+      </button>
     </view>
   </view>
 </template>
 
 <style scoped lang="scss">
-.page {
+.me-page {
   min-height: 100vh;
-  padding: 32rpx;
+  padding: 30rpx 28rpx 64rpx;
   background:
-    linear-gradient(180deg, #f4f8fb 0%, #edf2f6 100%);
+    radial-gradient(circle at 80% 2%, rgba(148, 204, 255, 0.34), transparent 32%),
+    linear-gradient(180deg, #ade8f4 0%, #f4fafd 50%, #f1e9db 100%);
   box-sizing: border-box;
 }
 
 .profile-card,
-.panel {
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid rgba(24, 33, 43, 0.08);
-  box-shadow: 0 18rpx 48rpx rgba(48, 72, 97, 0.08);
+.stats,
+.skin-card,
+.settings-card {
+  border: 1rpx solid rgba(255, 255, 255, 0.72);
+  border-radius: 32rpx;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 18rpx 56rpx rgba(0, 119, 182, 0.08);
 }
 
 .profile-card {
@@ -117,97 +152,179 @@ async function handleLogout() {
 }
 
 .avatar {
-  width: 120rpx;
-  height: 120rpx;
+  width: 118rpx;
+  height: 118rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.78);
   border-radius: 999rpx;
-  background: #dde6ef;
+  background: #dde4e6;
 }
 
-.profile-meta {
+.profile-main {
   display: flex;
   flex-direction: column;
   gap: 10rpx;
 }
 
 .name {
-  font-size: 36rpx;
+  color: #161d1f;
+  font-size: 40rpx;
   font-weight: 700;
-  color: #18212b;
 }
 
-.sub {
+.signature {
+  color: #404850;
   font-size: 26rpx;
-  color: #627181;
 }
 
-.panel {
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   margin-top: 24rpx;
-  padding: 30rpx;
+  padding: 26rpx 0;
 }
 
-.panel-title {
+.stat {
+  text-align: center;
+}
+
+.num,
+.label {
   display: block;
-  margin-bottom: 20rpx;
+}
+
+.num {
+  color: #005d90;
+  font-size: 40rpx;
+  font-weight: 800;
+}
+
+.label {
+  margin-top: 4rpx;
+  color: #404850;
+  font-size: 24rpx;
+}
+
+.skin-card,
+.settings-card {
+  margin-top: 24rpx;
+  padding: 28rpx;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title {
+  color: #161d1f;
   font-size: 30rpx;
-  font-weight: 600;
-  color: #18212b;
+  font-weight: 700;
+}
+
+.change,
+.chevron {
+  color: #005d90;
+  font-size: 25rpx;
+  font-weight: 700;
+}
+
+.skin-body {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 24rpx;
+}
+
+.skin-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 142rpx;
+  height: 172rpx;
+  border-radius: 28rpx;
+  background: rgba(0, 119, 182, 0.08);
+}
+
+.mini-bottle {
+  width: 62rpx;
+  height: 112rpx;
+  border: 3rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 30rpx 30rpx 18rpx 18rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(148, 204, 255, 0.3));
+  transform: rotate(-8deg);
+}
+
+.skin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.skin-name,
+.skin-desc {
+  display: block;
+}
+
+.skin-name {
+  color: #161d1f;
+  font-size: 31rpx;
+  font-weight: 700;
+}
+
+.skin-desc {
+  margin-top: 8rpx;
+  color: #404850;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.tags {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.tags text {
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(241, 233, 219, 0.78);
+  color: #005d90;
+  font-size: 22rpx;
 }
 
 .row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 20rpx;
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid rgba(24, 33, 43, 0.06);
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid rgba(0, 93, 144, 0.08);
+  color: #161d1f;
+  font-size: 28rpx;
 }
 
 .row:last-child {
   border-bottom: 0;
 }
 
-.label,
-.value,
-.hint {
-  font-size: 26rpx;
-  line-height: 1.7;
-}
-
-.label {
-  color: #5e6d7b;
-}
-
-.value,
-.hint {
-  color: #23313d;
-  text-align: right;
-}
-
-.hint {
-  text-align: left;
-}
-
 .actions {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  margin-top: 32rpx;
+  margin-top: 30rpx;
 }
 
-.action-btn {
+.actions button {
   height: 88rpx;
   border-radius: 999rpx;
+  font-size: 29rpx;
+  font-weight: 700;
   line-height: 88rpx;
-  font-size: 30rpx;
-  font-weight: 600;
 }
 
-.action-btn.primary {
-  background: #14532d;
+.primary {
+  background: linear-gradient(135deg, #0077b6, #f4a261);
   color: #fff;
 }
 
-.action-btn.ghost {
-  background: rgba(20, 83, 45, 0.08);
-  color: #14532d;
+.danger {
+  background: rgba(186, 26, 26, 0.08);
+  color: #93000a;
 }
 </style>

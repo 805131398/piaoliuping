@@ -2,7 +2,7 @@
   "name": "piaoliuping",
   "version": "1.0.0",
   "private": true,
-  "description": "Piaoliuping 基础工程，保留认证、后台管理、小程序壳子、微信能力与可复用系统组件",
+  "description": "漂流瓶基础工程，保留认证、后台管理、小程序壳子、微信能力与可复用系统组件",
   "scripts": {
     "dev": "sh -c 'set -a; . ./.env; set +a; NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --webpack'",
     "dev:turbo": "sh -c 'set -a; . ./.env; set +a; NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --turbopack'",

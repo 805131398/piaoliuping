@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Piaoliuping",
-    description: "Piaoliuping starter with reusable admin, auth, mini-app shell and system capabilities.",
+    title: "漂流瓶",
+    description: "漂流瓶基础工程，保留后台管理、认证、小程序壳子与可复用系统能力。",
 };
 
 export default function RootLayout({

@@ -29,13 +29,19 @@ export const nativeTabbarList: NativeTabBarItem[] = [
     iconPath: 'static/tabbar/home.png',
     selectedIconPath: 'static/tabbar/homeHL.png',
     pagePath: 'pages/index/index',
-    text: '首页',
+    text: '沧海',
+  },
+  {
+    iconPath: 'static/tabbar/scan.png',
+    selectedIconPath: 'static/tabbar/exampleHL.png',
+    pagePath: 'pages/drift/write',
+    text: '寄笺',
   },
   {
     iconPath: 'static/tabbar/personal.png',
     selectedIconPath: 'static/tabbar/personalHL.png',
-    pagePath: 'pages/me/me',
-    text: '个人',
+    pagePath: 'pages/drift/shelf',
+    text: '拾贝',
   },
 ]
 
@@ -43,23 +49,29 @@ export const nativeTabbarList: NativeTabBarItem[] = [
 // 如果需要配置鼓包，需要在 'tabbar/store.ts' 里面设置，最后在 `tabbar/index.vue` 里面更改鼓包的图片
 export const customTabbarList: CustomTabBarItem[] = [
   {
-    text: '首页',
+    text: '沧海',
     pagePath: 'pages/index/index',
     // 注意 unocss 图标需要如下处理：（二选一）
     // 1）在fg-tabbar.vue页面上引入一下并注释掉（见tabbar/index.vue代码第2行）
     // 2）配置到 unocss.config.ts 的 safelist 中
     iconType: 'unocss',
-    icon: 'i-carbon-home',
+    icon: 'i-lucide-waves',
     // badge: 'dot',
   },
   {
-    pagePath: 'pages/me/me',
-    text: '我的',
+    pagePath: 'pages/drift/write',
+    text: '寄笺',
     // 1）在fg-tabbar.vue页面上引入一下并注释掉（见tabbar/index.vue代码第2行）
     // 2）配置到 unocss.config.ts 的 safelist 中
     iconType: 'unocss',
-    icon: 'i-carbon-user',
+    icon: 'i-lucide-send',
     // badge: 10,
+  },
+  {
+    pagePath: 'pages/drift/shelf',
+    text: '拾贝',
+    iconType: 'unocss',
+    icon: 'i-lucide-archive',
   },
   // 其他类型演示
   // 1、uiLib

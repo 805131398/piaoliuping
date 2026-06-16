@@ -28,6 +28,15 @@ const httpInterceptor = {
     }
     // 非 http 开头需拼接地址
     if (!options.url.startsWith('http')) {
+      if (!baseUrl) {
+        const message = `请求基准地址未配置，无法请求 ${options.url}。请在 mini-app-ui/env/.env.development 配置 VITE_SERVER_BASEURL。`
+        console.error(message)
+        uni.showToast({
+          icon: 'none',
+          title: '请求地址未配置',
+        })
+        return false
+      }
       // #ifdef H5
       if (proxyEnabled) {
         // 自动拼接代理前缀
@@ -42,6 +51,9 @@ const httpInterceptor = {
       options.url = baseUrl + options.url
       // #endif
       // TIPS: 如果需要对接多个后端服务，也可以在这里处理，拼接成所需要的地址
+    }
+    if (import.meta.env.DEV) {
+      console.log('[request]', options.method || 'GET', options.url)
     }
     // 1. 请求超时
     options.timeout = 60000 // 60s

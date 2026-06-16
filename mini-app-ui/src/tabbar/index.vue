@@ -76,9 +76,9 @@ function getImageByIndex(index: number, item: CustomTabBarItem) {
 </script>
 
 <template>
-  <view v-if="customTabbarEnable" class="h-50px pb-safe">
+  <view v-if="customTabbarEnable" class="tabbar-placeholder">
     <view class="border-and-fixed bg-white" @touchmove.stop.prevent>
-      <view class="h-50px flex items-center">
+      <view class="tabbar-main flex items-center">
         <view
           v-for="(item, index) in tabbarList" :key="index"
           class="flex flex-1 flex-col items-center justify-center"
@@ -128,12 +128,24 @@ function getImageByIndex(index: number, item: CustomTabBarItem) {
         </view>
       </view>
 
-      <view class="pb-safe" />
+      <view class="tabbar-safe-area" />
     </view>
   </view>
 </template>
 
 <style scoped lang="scss">
+.tabbar-placeholder {
+  height: var(--app-tabbar-total-height);
+}
+
+.tabbar-main {
+  height: var(--app-tabbar-height);
+}
+
+.tabbar-safe-area {
+  height: var(--app-safe-area-bottom);
+}
+
 .border-and-fixed {
   position: fixed;
   bottom: 0;

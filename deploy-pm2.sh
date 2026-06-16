@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # ========================================
-# 首次部署脚本 - Language Learning
+# 首次部署脚本 - 漂流瓶
 # ========================================
 
 set -e
 
-SERVICE_NAME="language-learning"
-PROJECT_NAME="Language Learning"
+SERVICE_NAME="piaoliuping"
+PROJECT_NAME="漂流瓶"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

@@ -24,6 +24,56 @@ const SYSTEM_MENUS = [
     visible: true,
   },
   {
+    id: 'menu-drift',
+    label: '漂流瓶',
+    type: 'DIRECTORY' as const,
+    icon: 'Waves',
+    href: null,
+    parentId: null,
+    order: 15,
+    visible: true,
+  },
+  {
+    id: 'menu-drift-bottles',
+    label: '海笺管理',
+    type: 'MENU' as const,
+    icon: 'MessageSquareText',
+    href: '/admin/drift/bottles',
+    parentId: 'menu-drift',
+    order: 10,
+    visible: true,
+  },
+  {
+    id: 'menu-drift-tags',
+    label: '标签管理',
+    type: 'MENU' as const,
+    icon: 'Tags',
+    href: '/admin/drift/tags',
+    parentId: 'menu-drift',
+    order: 20,
+    visible: true,
+  },
+  {
+    id: 'menu-drift-reports',
+    label: '举报审核',
+    type: 'MENU' as const,
+    icon: 'Flag',
+    href: '/admin/drift/reports',
+    parentId: 'menu-drift',
+    order: 30,
+    visible: true,
+  },
+  {
+    id: 'menu-drift-skins',
+    label: '瓶身风格',
+    type: 'MENU' as const,
+    icon: 'Palette',
+    href: '/admin/drift/skins',
+    parentId: 'menu-drift',
+    order: 40,
+    visible: true,
+  },
+  {
     id: 'menu-user',
     label: '用户管理',
     type: 'MENU' as const,
@@ -91,6 +141,7 @@ const CONFIG_CATEGORIES = [
   { value: 'storage', label: '存储配置', description: 'OSS 与文件上传配置', order: 30 },
   { value: 'sms', label: '短信配置', description: '短信服务配置', order: 40 },
   { value: 'api', label: '接口配置', description: '公开 API 地址和基础参数', order: 50 },
+  { value: 'drift', label: '漂流瓶配置', description: '漂流瓶额度、推荐与内容治理配置', order: 60 },
 ]
 
 const CONFIG_KEYS = [
@@ -112,6 +163,9 @@ const CONFIG_KEYS = [
   { key: 'aliyun.sms.sign_name', value: process.env.ALIYUN_SMS_SIGN_NAME || '', description: '短信签名', category: 'sms', isSecret: false },
   { key: 'NEXT_PUBLIC_API_URL', value: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000', description: '公开 API 基础地址', category: 'api', isSecret: false },
   { key: 'API_RATE_LIMIT', value: process.env.API_RATE_LIMIT || '100', description: '每分钟接口请求上限', category: 'api', isSecret: false },
+  { key: 'drift.daily_discover_limit', value: '5', description: '每日默认打捞次数', category: 'drift', isSecret: false },
+  { key: 'drift.daily_throw_limit', value: '3', description: '每日默认投递次数', category: 'drift', isSecret: false },
+  { key: 'drift.auto_filter_sensitive', value: 'true', description: '是否默认开启敏感内容过滤', category: 'drift', isSecret: false },
 ]
 
 const PERMISSIONS = [
@@ -135,6 +189,70 @@ const PERMISSIONS = [
   { name: '查看文件', resource: 'file', action: 'read' },
   { name: '更新文件', resource: 'file', action: 'update' },
   { name: '删除文件', resource: 'file', action: 'delete' },
+  { name: '创建漂流瓶', resource: 'drift_bottle', action: 'create' },
+  { name: '查看漂流瓶', resource: 'drift_bottle', action: 'read' },
+  { name: '更新漂流瓶', resource: 'drift_bottle', action: 'update' },
+  { name: '删除漂流瓶', resource: 'drift_bottle', action: 'delete' },
+  { name: '创建漂流瓶标签', resource: 'drift_tag', action: 'create' },
+  { name: '查看漂流瓶标签', resource: 'drift_tag', action: 'read' },
+  { name: '更新漂流瓶标签', resource: 'drift_tag', action: 'update' },
+  { name: '删除漂流瓶标签', resource: 'drift_tag', action: 'delete' },
+  { name: '查看漂流瓶举报', resource: 'drift_report', action: 'read' },
+  { name: '处理漂流瓶举报', resource: 'drift_report', action: 'update' },
+  { name: '创建瓶身风格', resource: 'drift_skin', action: 'create' },
+  { name: '查看瓶身风格', resource: 'drift_skin', action: 'read' },
+  { name: '更新瓶身风格', resource: 'drift_skin', action: 'update' },
+  { name: '删除瓶身风格', resource: 'drift_skin', action: 'delete' },
+]
+
+const DRIFT_TAGS = [
+  { code: 'random', name: '随机', color: '#0077b6', sortOrder: 10, isActive: true },
+  { code: 'music', name: '音乐', color: '#f4a261', sortOrder: 20, isActive: true },
+  { code: 'tree-hole', name: '树洞', color: '#5d594e', sortOrder: 30, isActive: true },
+  { code: 'dreams', name: '梦境', color: '#94ccff', sortOrder: 40, isActive: true },
+  { code: 'reflection', name: '回想', color: '#767166', sortOrder: 50, isActive: true },
+]
+
+const DRIFT_SKINS = [
+  {
+    code: 'ocean-whisper',
+    name: '海洋耳语',
+    description: '透亮的玻璃瓶，内嵌陈旧的羊皮纸，瓶口由天蓝色火漆密封。',
+    rarity: 'RARE' as const,
+    previewUrl: null,
+    themeTokens: {
+      primary: '#0077b6',
+      accent: '#94ccff',
+      texture: 'glass',
+    },
+    isActive: true,
+  },
+  {
+    code: 'sunset-cork',
+    name: '落日晚笺',
+    description: '温暖橙光包裹的软木瓶塞，适合寄出温柔的黄昏心事。',
+    rarity: 'COMMON' as const,
+    previewUrl: null,
+    themeTokens: {
+      primary: '#f4a261',
+      accent: '#ffdcc4',
+      texture: 'cork',
+    },
+    isActive: true,
+  },
+  {
+    code: 'mist-shell',
+    name: '海沫贝光',
+    description: '带有浅贝壳光泽的半透明瓶身，适合收藏安静的回音。',
+    rarity: 'EPIC' as const,
+    previewUrl: null,
+    themeTokens: {
+      primary: '#5d594e',
+      accent: '#e9e2d4',
+      texture: 'shell',
+    },
+    isActive: true,
+  },
 ]
 
 const LEGACY_MENU_PREFIXES = [
@@ -324,6 +442,36 @@ async function seedConfigCategoriesAndConfigs() {
   }
 }
 
+async function seedDriftDictionaries() {
+  for (const tag of DRIFT_TAGS) {
+    await prisma.driftTag.upsert({
+      where: { code: tag.code },
+      update: {
+        name: tag.name,
+        color: tag.color,
+        sortOrder: tag.sortOrder,
+        isActive: tag.isActive,
+      },
+      create: tag,
+    })
+  }
+
+  for (const skin of DRIFT_SKINS) {
+    await prisma.driftBottleSkin.upsert({
+      where: { code: skin.code },
+      update: {
+        name: skin.name,
+        description: skin.description,
+        rarity: skin.rarity,
+        previewUrl: skin.previewUrl,
+        themeTokens: skin.themeTokens,
+        isActive: skin.isActive,
+      },
+      create: skin,
+    })
+  }
+}
+
 async function main() {
   console.log('开始初始化基础系统数据...')
 
@@ -332,6 +480,7 @@ async function main() {
   await cleanupObsoleteMenus()
   await seedMenus()
   await seedConfigCategoriesAndConfigs()
+  await seedDriftDictionaries()
 
   console.log('✅ 基础系统数据初始化完成')
 }

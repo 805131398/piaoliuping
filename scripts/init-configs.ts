@@ -132,7 +132,7 @@ async function main() {
     // 其他配置
     {
       key: "APP_NAME",
-      value: "Piaoliuping",
+      value: "漂流瓶",
       description: "应用名称",
       category: "other",
       isSecret: false,

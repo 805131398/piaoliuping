@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # ========================================
-# 项目更新脚本 - Language Learning
+# 项目更新脚本 - 漂流瓶
 # ========================================
 # 适用于手动覆盖代码后的重新安装、迁移、构建和重启
 # ========================================
 
 set -e
 
-SERVICE_NAME="language-learning"
-PROJECT_NAME="Language Learning"
+SERVICE_NAME="piaoliuping"
+PROJECT_NAME="漂流瓶"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

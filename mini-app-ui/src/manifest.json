@@ -1,7 +1,7 @@
 {
-  "name": "Piaoliuping",
+  "name": "漂流瓶",
   "appid": "",
-  "description": "Piaoliuping 小程序壳子工程",
+  "description": "",
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
@@ -81,6 +81,12 @@
       "ignoreVersion": true
     }
   },
+  "app-harmony": {
+    "distribute": {}
+  },
+  "mp-harmony": {
+    "distribute": {}
+  },
   "quickapp": {},
   "mp-weixin": {
     "appid": "",
@@ -126,7 +132,10 @@
     "enable": false
   },
   "vueVersion": "3",
+  "locale": "zh-Hans",
   "h5": {
-    "router": {}
+    "router": {
+      "base": "/"
+    }
   }
 }

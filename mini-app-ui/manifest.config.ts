@@ -10,8 +10,23 @@ function getMode() {
   const modeFlagIndex = args.findIndex(arg => arg === '--mode')
   return modeFlagIndex !== -1 ? args[modeFlagIndex + 1] : args[0] === 'build' ? 'production' : 'development' // 默认 development
 }
+
+function pickViteEnv(source: NodeJS.ProcessEnv) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([key]) => key.startsWith('VITE_')),
+  )
+}
+
 // 获取环境变量的范例
-const env = loadEnv(getMode(), path.resolve(process.cwd(), 'env'))
+const env = {
+  VITE_APP_TITLE: '漂流瓶',
+  VITE_UNI_APPID: '',
+  VITE_WX_APPID: '',
+  VITE_APP_PUBLIC_BASE: '/',
+  VITE_FALLBACK_LOCALE: 'zh-Hans',
+  ...loadEnv(getMode(), path.resolve(process.cwd(), 'env')),
+  ...pickViteEnv(process.env),
+}
 const {
   VITE_APP_TITLE,
   VITE_UNI_APPID,

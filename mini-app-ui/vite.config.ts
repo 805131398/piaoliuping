@@ -28,6 +28,25 @@ import openDevTools from './scripts/open-dev-tools'
 import { createCopyNativeResourcesPlugin } from './vite-plugins/copy-native-resources'
 import syncManifestPlugin from './vite-plugins/sync-manifest-plugins'
 
+function requireEnv(env: Record<string, string | undefined>, keys: string[], platform?: string) {
+  const missing = keys.filter(key => !env[key])
+  if (!missing.length) {
+    return
+  }
+
+  const suffix = platform ? ` for ${platform}` : ''
+  throw new Error(
+    `Missing required mini-app env${suffix}: ${missing.join(', ')}. `
+    + 'Copy mini-app-ui/env/.env.example to mini-app-ui/env/.env.development and fill the values.',
+  )
+}
+
+function pickViteEnv(source: NodeJS.ProcessEnv) {
+  return Object.fromEntries(
+    Object.entries(source).filter(([key]) => key.startsWith('VITE_')),
+  )
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   // @see https://unocss.dev/
@@ -47,7 +66,19 @@ export default defineConfig(({ command, mode }) => {
   const { UNI_PLATFORM } = process.env
   console.log('UNI_PLATFORM -> ', UNI_PLATFORM) // 得到 mp-weixin, h5, app 等
 
-  const env = loadEnv(mode, path.resolve(process.cwd(), 'env'))
+  const envDir = path.resolve(process.cwd(), 'env')
+  const env = {
+    VITE_APP_PORT: '9000',
+    VITE_APP_TITLE: '漂流瓶',
+    VITE_APP_PUBLIC_BASE: '/',
+    VITE_APP_PROXY_ENABLE: 'false',
+    VITE_APP_PROXY_PREFIX: '/api',
+    VITE_DELETE_CONSOLE: 'false',
+    VITE_AUTH_MODE: 'single',
+    VITE_COPY_NATIVE_RES_ENABLE: 'false',
+    ...loadEnv(mode, envDir),
+    ...pickViteEnv(process.env),
+  }
   const {
     VITE_APP_PORT,
     VITE_SERVER_BASEURL,
@@ -58,8 +89,15 @@ export default defineConfig(({ command, mode }) => {
     VITE_APP_PROXY_PREFIX,
     VITE_COPY_NATIVE_RES_ENABLE,
   } = env
-  console.log('环境变量 env -> ', env)
+  console.log('环境变量 env -> ', {
+    ...env,
+    VITE_SERVER_BASEURL: VITE_SERVER_BASEURL ? '<configured>' : '',
+  })
   const proxyEnabled = VITE_APP_PROXY_ENABLE === 'true'
+
+  if (UNI_PLATFORM === 'mp-weixin') {
+    requireEnv(env, ['VITE_SERVER_BASEURL'], UNI_PLATFORM)
+  }
 
   return defineConfig({
     envDir: './env', // 自定义env目录
@@ -153,6 +191,13 @@ export default defineConfig(({ command, mode }) => {
     ],
     define: {
       __VITE_APP_PROXY__: JSON.stringify(proxyEnabled),
+      'import.meta.env.VITE_APP_PROXY_ENABLE': JSON.stringify(VITE_APP_PROXY_ENABLE),
+      'import.meta.env.VITE_APP_PROXY_PREFIX': JSON.stringify(VITE_APP_PROXY_PREFIX),
+      'import.meta.env.VITE_SERVER_BASEURL': JSON.stringify(VITE_SERVER_BASEURL || ''),
+      'import.meta.env.VITE_SERVER_BASEURL__WEIXIN_DEVELOP': JSON.stringify(env.VITE_SERVER_BASEURL__WEIXIN_DEVELOP || ''),
+      'import.meta.env.VITE_SERVER_BASEURL__WEIXIN_TRIAL': JSON.stringify(env.VITE_SERVER_BASEURL__WEIXIN_TRIAL || ''),
+      'import.meta.env.VITE_SERVER_BASEURL__WEIXIN_RELEASE': JSON.stringify(env.VITE_SERVER_BASEURL__WEIXIN_RELEASE || ''),
+      'import.meta.env.VITE_AUTH_MODE': JSON.stringify(env.VITE_AUTH_MODE),
     },
     css: {
       postcss: {

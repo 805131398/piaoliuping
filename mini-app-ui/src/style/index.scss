@@ -16,6 +16,14 @@ page {
 
   // 修改按钮背景色
   // --wot-button-primary-bg-color: green;
+
+  --app-tabbar-height: 50px;
+  --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --app-tabbar-total-height: calc(var(--app-tabbar-height) + var(--app-safe-area-bottom));
+}
+
+.app-tabbar-page {
+  min-height: calc(100vh - var(--app-tabbar-total-height));
 }
 
 /*

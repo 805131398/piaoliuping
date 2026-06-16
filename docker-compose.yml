@@ -1,5 +1,5 @@
 # ========================================
-# Language Learning - Docker Compose 配置
+# 漂流瓶 - Docker Compose 配置
 # ========================================
 # 使用方法:
 #   构建并启动: docker-compose up -d --build
@@ -15,7 +15,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: language-learning
+    container_name: piaoliuping
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -48,27 +48,27 @@ services:
     depends_on:
       - db
     networks:
-      - language-learning-network
+      - piaoliuping-network
 
   # PostgreSQL 数据库 (可选，如果使用外部数据库可注释)
   db:
     image: postgres:15-alpine
-    container_name: language-learning-postgres
+    container_name: piaoliuping-postgres
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
-      - POSTGRES_DB=${DB_NAME:-language_learning}
+      - POSTGRES_DB=${DB_NAME:-piaoliuping}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - language-learning-network
+      - piaoliuping-network
 
 volumes:
   postgres_data:
 
 networks:
-  language-learning-network:
+  piaoliuping-network:
     driver: bridge

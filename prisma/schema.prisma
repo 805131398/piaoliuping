@@ -10,44 +10,56 @@ datasource db {
 /// 用户表
 model User {
   /// 用户ID
-  id            String     @id @default(cuid())
+  id                         String                  @id @default(cuid())
   /// 用户名
-  username      String?    @unique
+  username                   String?                 @unique
   /// 昵称
-  name          String?
+  name                       String?
   /// 邮箱
-  email         String?    @unique
+  email                      String?                 @unique
   /// 邮箱验证时间
-  emailVerified DateTime?
+  emailVerified              DateTime?
   /// 头像URL
-  image         String?
+  image                      String?
   /// 手机号
-  phone         String?    @unique
+  phone                      String?                 @unique
   /// 密码（bcrypt 加密存储）
-  password      String?
+  password                   String?
   /// 微信小程序 openid
-  openid        String?    @unique
+  openid                     String?                 @unique
   /// 微信开放平台 unionid
-  unionid       String?    @unique
+  unionid                    String?                 @unique
   /// 头像种子
-  avatarSeed    String?
+  avatarSeed                 String?
   /// 头像风格
-  avatarStyle   String?
+  avatarStyle                String?
   /// 头像类型
-  avatarType    String?
+  avatarType                 String?
   /// 是否激活
-  isActive      Boolean    @default(true)
+  isActive                   Boolean                 @default(true)
   /// 当前总积分
-  points        Int        @default(0)
+  points                     Int                     @default(0)
   /// VIP会员到期时间
-  vipExpireAt   DateTime?
+  vipExpireAt                DateTime?
   /// 创建时间
-  createdAt     DateTime   @default(now())
+  createdAt                  DateTime                @default(now())
   /// 更新时间
-  updatedAt     DateTime   @updatedAt
-  accounts      Account[]
-  sessions      Session[]
-  roles         UserRole[]
+  updatedAt                  DateTime                @updatedAt
+  accounts                   Account[]
+  sessions                   Session[]
+  roles                      UserRole[]
+  driftBottles               DriftBottle[]
+  driftFinds                 DriftDiscovery[]
+  sentDriftMessages          DriftMessage[]
+  driftCollections           DriftCollection[]
+  driftReports               DriftReport[]           @relation("DriftReportReporter")
+  handledDriftReports        DriftReport[]           @relation("DriftReportHandler")
+  driftStats                 DriftUserStats?
+  driftDailyCounters         DriftUserDailyCounter[]
+  driftSkins                 DriftUserSkin[]
+  driftSettings              DriftUserSettings?
+  authoredDriftConversations DriftConversation[]     @relation("DriftConversationAuthor")
+  foundDriftConversations    DriftConversation[]     @relation("DriftConversationFinder")
 
   @@map("users")
 }
@@ -289,10 +301,459 @@ model Config {
   @@map("configs")
 }
 
+/// 漂流瓶内容表
+model DriftBottle {
+  /// 瓶子ID
+  id               String              @id @default(cuid())
+  /// 投递用户ID
+  authorId         String
+  /// 标题
+  title            String?
+  /// 内容类型
+  contentType      DriftContentType
+  /// 文本内容
+  textContent      String?
+  /// 媒体URL
+  mediaUrl         String?
+  /// OSS对象Key
+  mediaObjectKey   String?
+  /// 媒体时长（秒）
+  mediaDurationSec Int?
+  /// 心情
+  mood             DriftBottleMood?
+  /// 状态
+  status           DriftBottleStatus   @default(FLOATING)
+  /// 是否匿名展示
+  isAnonymous      Boolean             @default(true)
+  /// 投递纬度
+  originLat        Decimal?            @db.Decimal(10, 7)
+  /// 投递经度
+  originLng        Decimal?            @db.Decimal(10, 7)
+  /// 粗粒度位置索引
+  originGeohash    String?
+  /// 位置展示文案
+  originLabel      String?
+  /// 回信数量
+  replyCount       Int                 @default(0)
+  /// 被捞起次数
+  discoveryCount   Int                 @default(0)
+  /// 最近入海时间
+  lastDriftedAt    DateTime            @default(now())
+  /// 创建时间
+  createdAt        DateTime            @default(now())
+  /// 更新时间
+  updatedAt        DateTime            @updatedAt
+  /// 删除时间
+  deletedAt        DateTime?
+  author           User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags             DriftBottleTag[]
+  discoveries      DriftDiscovery[]
+  conversations    DriftConversation[]
+  collections      DriftCollection[]
+  reports          DriftReport[]
+
+  @@index([authorId, createdAt])
+  @@index([status, lastDriftedAt])
+  @@index([originGeohash])
+  @@map("drift_bottles")
+}
+
+/// 漂流瓶标签表
+model DriftTag {
+  /// 标签ID
+  id             String           @id @default(cuid())
+  /// 标签编码
+  code           String           @unique
+  /// 标签名称
+  name           String
+  /// 标签颜色
+  color          String?
+  /// 排序
+  sortOrder      Int              @default(0)
+  /// 是否启用
+  isActive       Boolean          @default(true)
+  bottles        DriftBottleTag[]
+  DriftDiscovery DriftDiscovery[]
+
+  @@index([sortOrder])
+  @@map("drift_tags")
+}
+
+/// 漂流瓶标签关联表
+model DriftBottleTag {
+  /// 关联ID
+  id       String      @id @default(cuid())
+  /// 瓶子ID
+  bottleId String
+  /// 标签ID
+  tagId    String
+  bottle   DriftBottle @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  tag      DriftTag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([bottleId, tagId])
+  @@index([tagId])
+  @@map("drift_bottle_tags")
+}
+
+/// 漂流瓶打捞记录表
+model DriftDiscovery {
+  /// 记录ID
+  id          String               @id @default(cuid())
+  /// 瓶子ID
+  bottleId    String
+  /// 打捞用户ID
+  finderId    String
+  /// 来源
+  source      DriftDiscoverySource @default(RANDOM)
+  /// 来源标签ID
+  sourceTagId String?
+  /// 距离快照（公里）
+  distanceKm  Decimal?             @db.Decimal(10, 2)
+  /// 行为
+  action      DriftDiscoveryAction @default(OPENED)
+  /// 打开时间
+  openedAt    DateTime             @default(now())
+  /// 行为完成时间
+  actedAt     DateTime?
+  bottle      DriftBottle          @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  finder      User                 @relation(fields: [finderId], references: [id], onDelete: Cascade)
+  sourceTag   DriftTag?            @relation(fields: [sourceTagId], references: [id])
+
+  @@index([finderId, openedAt])
+  @@index([bottleId, openedAt])
+  @@index([sourceTagId])
+  @@map("drift_discoveries")
+}
+
+/// 漂流瓶对话表
+model DriftConversation {
+  /// 对话ID
+  id                 String                  @id @default(cuid())
+  /// 瓶子ID
+  bottleId           String
+  /// 投递用户ID
+  authorId           String
+  /// 打捞用户ID
+  finderId           String
+  /// 状态
+  status             DriftConversationStatus @default(ACTIVE)
+  /// 最近消息ID
+  lastMessageId      String?
+  /// 最近消息预览
+  lastMessagePreview String?
+  /// 最近消息时间
+  lastMessageAt      DateTime                @default(now())
+  /// 创建时间
+  createdAt          DateTime                @default(now())
+  /// 更新时间
+  updatedAt          DateTime                @updatedAt
+  bottle             DriftBottle             @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  author             User                    @relation("DriftConversationAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  finder             User                    @relation("DriftConversationFinder", fields: [finderId], references: [id], onDelete: Cascade)
+  messages           DriftMessage[]
+  reports            DriftReport[]
+
+  @@unique([bottleId, authorId, finderId])
+  @@index([authorId, lastMessageAt])
+  @@index([finderId, lastMessageAt])
+  @@map("drift_conversations")
+}
+
+/// 漂流瓶消息表
+model DriftMessage {
+  /// 消息ID
+  id               String            @id @default(cuid())
+  /// 对话ID
+  conversationId   String
+  /// 发送者ID
+  senderId         String
+  /// 内容类型
+  contentType      DriftContentType  @default(TEXT)
+  /// 文本内容
+  body             String?
+  /// 媒体URL
+  mediaUrl         String?
+  /// OSS对象Key
+  mediaObjectKey   String?
+  /// 媒体时长（秒）
+  mediaDurationSec Int?
+  /// 是否已读
+  isRead           Boolean           @default(false)
+  /// 创建时间
+  createdAt        DateTime          @default(now())
+  /// 删除时间
+  deletedAt        DateTime?
+  conversation     DriftConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender           User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reports          DriftReport[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("drift_messages")
+}
+
+/// 漂流瓶收藏表
+model DriftCollection {
+  /// 收藏ID
+  id             String              @id @default(cuid())
+  /// 用户ID
+  userId         String
+  /// 瓶子ID
+  bottleId       String
+  /// 收藏类型
+  collectionType DriftCollectionType @default(FAVORITE)
+  /// 创建时间
+  createdAt      DateTime            @default(now())
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bottle         DriftBottle         @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bottleId, collectionType])
+  @@index([bottleId])
+  @@map("drift_collections")
+}
+
+/// 漂流瓶举报表
+model DriftReport {
+  /// 举报ID
+  id             String             @id @default(cuid())
+  /// 举报人ID
+  reporterId     String
+  /// 瓶子ID
+  bottleId       String?
+  /// 对话ID
+  conversationId String?
+  /// 消息ID
+  messageId      String?
+  /// 举报原因
+  reason         DriftReportReason
+  /// 补充说明
+  description    String?
+  /// 处理状态
+  status         DriftReviewStatus  @default(PENDING)
+  /// 处理人ID
+  handledBy      String?
+  /// 处理时间
+  handledAt      DateTime?
+  /// 创建时间
+  createdAt      DateTime           @default(now())
+  reporter       User               @relation("DriftReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  handler        User?              @relation("DriftReportHandler", fields: [handledBy], references: [id])
+  bottle         DriftBottle?       @relation(fields: [bottleId], references: [id], onDelete: Cascade)
+  conversation   DriftConversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message        DriftMessage?      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([bottleId])
+  @@index([conversationId])
+  @@index([messageId])
+  @@map("drift_reports")
+}
+
+/// 漂流瓶用户统计表
+model DriftUserStats {
+  /// 统计ID
+  id                String    @id @default(cuid())
+  /// 用户ID
+  userId            String    @unique
+  /// 投递数量
+  bottleCount       Int       @default(0)
+  /// 捞起数量
+  discoveryCount    Int       @default(0)
+  /// 对话数量
+  conversationCount Int       @default(0)
+  /// 陪伴天数
+  companionDays     Int       @default(0)
+  /// 最近活跃时间
+  lastActiveAt      DateTime?
+  /// 更新时间
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("drift_user_stats")
+}
+
+/// 漂流瓶每日计数表
+model DriftUserDailyCounter {
+  /// 计数ID
+  id          String               @id @default(cuid())
+  /// 用户ID
+  userId      String
+  /// 统计日期
+  counterDate DateTime             @db.Date
+  /// 行为类型
+  actionType  DriftDailyActionType
+  /// 已使用次数
+  usedCount   Int                  @default(0)
+  /// 当日上限
+  limitCount  Int                  @default(5)
+  /// 更新时间
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, counterDate, actionType])
+  @@index([counterDate, actionType])
+  @@map("drift_user_daily_counters")
+}
+
+/// 漂流瓶风格表
+model DriftBottleSkin {
+  /// 风格ID
+  id          String          @id @default(cuid())
+  /// 风格编码
+  code        String          @unique
+  /// 名称
+  name        String
+  /// 描述
+  description String?
+  /// 稀有度
+  rarity      DriftSkinRarity @default(COMMON)
+  /// 预览图
+  previewUrl  String?
+  /// 主题配置
+  themeTokens Json?
+  /// 是否启用
+  isActive    Boolean         @default(true)
+  userSkins   DriftUserSkin[]
+
+  @@index([rarity])
+  @@map("drift_bottle_skins")
+}
+
+/// 用户瓶子风格表
+model DriftUserSkin {
+  /// 关联ID
+  id         String          @id @default(cuid())
+  /// 用户ID
+  userId     String
+  /// 风格ID
+  skinId     String
+  /// 是否当前使用
+  isEquipped Boolean         @default(false)
+  /// 获取时间
+  obtainedAt DateTime        @default(now())
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skin       DriftBottleSkin @relation(fields: [skinId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skinId])
+  @@index([skinId])
+  @@map("drift_user_skins")
+}
+
+/// 漂流瓶用户设置表
+model DriftUserSettings {
+  /// 设置ID
+  id                  String   @id @default(cuid())
+  /// 用户ID
+  userId              String   @unique
+  /// 是否允许位置
+  allowLocation       Boolean  @default(false)
+  /// 是否允许回信
+  allowReplies        Boolean  @default(true)
+  /// 是否开启通知
+  notificationEnabled Boolean  @default(true)
+  /// 是否自动敏感过滤
+  autoFilterSensitive Boolean  @default(true)
+  /// 更新时间
+  updatedAt           DateTime @updatedAt
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("drift_user_settings")
+}
+
 /// 菜单类型枚举
 enum MenuType {
   /// 目录（分组）
   DIRECTORY
   /// 菜单（可点击）
   MENU
+}
+
+/// 漂流瓶内容类型
+enum DriftContentType {
+  TEXT
+  VOICE
+  IMAGE
+}
+
+/// 漂流瓶心情
+enum DriftBottleMood {
+  HAPPY
+  LONELY
+  CURIOUS
+  CALM
+  SAD
+}
+
+/// 漂流瓶状态
+enum DriftBottleStatus {
+  DRAFT
+  FLOATING
+  RETURNED
+  ARCHIVED
+  BLOCKED
+  DELETED
+}
+
+/// 打捞来源
+enum DriftDiscoverySource {
+  RANDOM
+  TAG
+  RECOMMENDED
+}
+
+/// 打捞行为
+enum DriftDiscoveryAction {
+  OPENED
+  RETURNED
+  REPLIED
+  DISMISSED
+  REPORTED
+  COLLECTED
+}
+
+/// 漂流瓶对话状态
+enum DriftConversationStatus {
+  ACTIVE
+  CLOSED
+  BLOCKED
+  DELETED
+}
+
+/// 收藏类型
+enum DriftCollectionType {
+  FAVORITE
+  ARCHIVE
+}
+
+/// 举报原因
+enum DriftReportReason {
+  INAPPROPRIATE
+  HARASSMENT
+  SPAM
+  OTHER
+}
+
+/// 审核状态
+enum DriftReviewStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+/// 每日行为类型
+enum DriftDailyActionType {
+  DISCOVER
+  THROW
+  REPLY
+  REPORT
+}
+
+/// 瓶子风格稀有度
+enum DriftSkinRarity {
+  COMMON
+  RARE
+  EPIC
+  LIMITED
 }

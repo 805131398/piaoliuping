@@ -5,7 +5,7 @@
   "unibest-version": "4.1.0",
   "unibest-update-time": "2025-11-07",
   "packageManager": "pnpm@10.10.0",
-  "description": "Piaoliuping 小程序壳子工程",
+  "description": "漂流瓶小程序壳子工程",
   "license": "MIT",
   "engines": {
     "node": ">=20",
