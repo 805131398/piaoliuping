@@ -9,9 +9,7 @@ definePage({
 })
 
 function goBack() {
-  // 当pages.config.ts中配置了tabbar页面时，使用switchTab切换到首页
-  // 否则使用navigateTo返回首页
-  uni.switchTab({ url: HOME_PAGE })
+  uni.reLaunch({ url: HOME_PAGE })
 }
 </script>
 

@@ -95,7 +95,7 @@ export default defineConfig(({ command, mode }) => {
   })
   const proxyEnabled = VITE_APP_PROXY_ENABLE === 'true'
 
-  if (UNI_PLATFORM === 'mp-weixin') {
+  if (UNI_PLATFORM === 'mp-weixin' && mode !== 'development') {
     requireEnv(env, ['VITE_SERVER_BASEURL'], UNI_PLATFORM)
   }
 

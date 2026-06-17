@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
+import AppTopbar from '@/components/AppTopbar.vue'
 
 defineOptions({
   name: 'DriftShelf',
@@ -7,6 +8,7 @@ defineOptions({
 
 definePage({
   style: {
+    navigationStyle: 'custom',
     navigationBarTitleText: '漂流瓶',
     navigationBarBackgroundColor: '#f4fafd',
     navigationBarTextStyle: 'black',
@@ -29,10 +31,12 @@ const replies = [
 </script>
 
 <template>
-  <view class="treasure-page app-tabbar-page">
+  <view class="treasure-page">
     <view class="decor decor-one" />
     <view class="decor decor-two" />
     <view class="shell-badge" />
+
+    <AppTopbar title="拾贝匣" subtitle="瓶子与回音" icon="i-lucide-archive" variant="transparent" />
 
     <view class="header">
       <view class="wave-icon">
@@ -108,7 +112,8 @@ const replies = [
 <style scoped lang="scss">
 .treasure-page {
   position: relative;
-  padding: 28rpx 28rpx 108rpx;
+  min-height: 100vh;
+  padding: 0 28rpx 108rpx;
   overflow: hidden;
   background:
     radial-gradient(circle at 86% 12%, rgba(255, 255, 255, 0.7), transparent 18%),
@@ -140,7 +145,7 @@ const replies = [
 
 .shell-badge {
   position: absolute;
-  top: 14rpx;
+  top: calc(var(--status-bar-height) + 30rpx);
   right: 28rpx;
   width: 48rpx;
   height: 48rpx;
@@ -159,6 +164,7 @@ const replies = [
   align-items: center;
   gap: 10rpx;
   height: 44rpx;
+  margin-top: 14rpx;
 }
 
 .wave-icon {

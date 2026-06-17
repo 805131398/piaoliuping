@@ -1,12 +1,14 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import AppTopbar from '@/components/AppTopbar.vue'
 import { useUserStore } from '@/store'
 import { useTokenStore } from '@/store/token'
 import { getEnvBaseUrl } from '@/utils'
 
 definePage({
   style: {
+    navigationStyle: 'custom',
     navigationBarTitleText: '个人设置',
   },
 })
@@ -185,6 +187,8 @@ function formatPhone(phone: string) {
 
 <template>
   <view class="settings-page">
+    <AppTopbar title="个人设置" subtitle="头像、昵称与手机号" icon="i-lucide-settings" back />
+
     <!-- 头像设置 -->
     <view class="settings-section">
       <view class="section-title">头像</view>
@@ -279,7 +283,7 @@ function formatPhone(phone: string) {
 .settings-page {
   min-height: 100vh;
   background: #f5f5f5;
-  padding: 24rpx;
+  padding: 0 24rpx 24rpx;
 }
 
 .settings-section {

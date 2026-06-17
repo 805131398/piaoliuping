@@ -5,7 +5,6 @@ import { isMp } from '@uni-helper/uni-env'
  * 黑、白名单的配置，请看 config.ts 文件， EXCLUDE_LOGIN_PATH_LIST
  */
 import { useTokenStore } from '@/store/token'
-import { isPageTabbar, tabbarStore } from '@/tabbar/store'
 import { getAllPages, getLastPage, HOME_PAGE, parseUrlToObj } from '@/utils/index'
 import { EXCLUDE_LOGIN_PATH_LIST, isNeedLoginMode, LOGIN_PAGE, LOGIN_PAGE_ENABLE_IN_MP, NOT_FOUND_PAGE } from './config'
 import { toLoginPage } from '@/utils/toLoginPage'
@@ -82,9 +81,6 @@ export const navigateToInterceptor = {
       return false // 明确表示阻止原路由继续执行
     }
 
-    // 处理直接进入路由非首页时，tabbarIndex 不正确的问题
-    tabbarStore.setAutoCurIdx(path)
-
     // 小程序里面使用平台自带的登录，则不走下面的逻辑
     if (isMp && !LOGIN_PAGE_ENABLE_IN_MP) {
       return true // 明确表示允许路由继续执行
@@ -101,12 +97,7 @@ export const navigateToInterceptor = {
       else {
         console.log('已经登录，但是还在登录页', myQuery.redirect)
         const url = myQuery.redirect || HOME_PAGE
-        if (isPageTabbar(url)) {
-          uni.switchTab({ url })
-        }
-        else {
-          uni.navigateTo({ url })
-        }
+        uni.reLaunch({ url })
         return false // 明确表示阻止原路由继续执行
       }
     }

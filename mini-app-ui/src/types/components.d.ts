@@ -7,6 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AppTopbar: typeof import('./../components/AppTopbar.vue')['default']
     BubbleCard: typeof import('./../components/theme/BubbleCard.vue')['default']
     BubbleGrid: typeof import('./../components/theme/BubbleGrid.vue')['default']
     BubblePreview: typeof import('./../components/theme/BubblePreview.vue')['default']

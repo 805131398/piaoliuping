@@ -19,9 +19,7 @@ interface NavigateToOptions {
 }
 interface RedirectToOptions extends NavigateToOptions {}
 
-interface SwitchTabOptions {
-  url: "/pages/index/index" | "/pages/drift/write" | "/pages/drift/shelf"
-}
+interface SwitchTabOptions {}
 
 type ReLaunchOptions = NavigateToOptions | SwitchTabOptions;
 

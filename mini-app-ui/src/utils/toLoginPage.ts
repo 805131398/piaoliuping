@@ -1,6 +1,5 @@
 import { getLastPage } from '@/utils'
 import { debounce } from '@/utils/debounce'
-import { isPageTabbar } from '@/tabbar/store'
 
 interface ToLoginPageOptions {
   /**
@@ -36,13 +35,10 @@ export const toLoginPage = debounce((options: ToLoginPageOptions = {}) => {
     return
   }
 
-  const isTab = isPageTabbar(LOGIN_PAGE)
   if (mode === 'navigateTo') {
-    if (isTab) uni.switchTab({ url: LOGIN_PAGE })
-    else uni.navigateTo({ url })
+    uni.navigateTo({ url })
   }
   else {
-    if (isTab) uni.switchTab({ url: LOGIN_PAGE })
-    else uni.reLaunch({ url })
+    uni.reLaunch({ url })
   }
 }, 500)

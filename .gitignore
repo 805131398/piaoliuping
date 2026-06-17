@@ -23,6 +23,7 @@ pnpm-debug.log*
 # coverage and caches
 coverage/
 .cache/
+*.tsbuildinfo
 
 # local OS/editor files
 .DS_Store

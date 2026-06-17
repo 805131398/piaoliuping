@@ -1,174 +1,515 @@
 <script setup lang="ts">
-// i-carbon-code
-import type { CustomTabBarItem } from './types'
-import { customTabbarEnable, needHideNativeTabbar, tabbarCacheEnable } from './config'
-import { tabbarList, tabbarStore } from './store'
+import { computed, ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { useBottleLoginGuard } from '@/hooks/useBottleLoginGuard'
+import { currRoute } from '@/utils'
+import { customTabbarList } from './config'
 
 // #ifdef MP-WEIXIN
-// 将自定义节点设置成虚拟的（去掉自定义组件包裹层），更加接近Vue组件的表现，能更好的使用flex属性
 defineOptions({
   virtualHost: true,
 })
 // #endif
 
-function handleClick(index: number) {
-  // 点击原来的不做操作
-  if (index === tabbarStore.curIdx) {
+const expanded = ref(false)
+const currentPath = ref('/pages/index/index')
+const {
+  showLoginPrompt,
+  closeLoginPrompt,
+  drawBottle: guardedDrawBottle,
+} = useBottleLoginGuard()
+
+const navItems = computed(() => {
+  return customTabbarList.map(item => ({
+    ...item,
+    pagePath: item.pagePath.startsWith('/') ? item.pagePath : `/${item.pagePath}`,
+    icon: item.icon || 'i-lucide-circle',
+  }))
+})
+
+onShow(() => {
+  const { path } = currRoute()
+  currentPath.value = path === '/' ? '/pages/index/index' : path
+})
+
+function toggleExpanded() {
+  expanded.value = !expanded.value
+}
+
+function closeExpanded() {
+  expanded.value = false
+}
+
+function drawBottle() {
+  closeExpanded()
+  guardedDrawBottle()
+}
+
+function goPage(url?: string) {
+  if (!url) {
     return
   }
 
-  if (tabbarList[index].isBulge) {
+  closeExpanded()
+
+  if (currentPath.value === url) {
     return
   }
-  const url = tabbarList[index].pagePath
-  tabbarStore.setCurIdx(index)
 
-  if (tabbarCacheEnable) {
-    uni.switchTab({ url })
-  }
-  else {
-    uni.navigateTo({ url })
-  }
-}
-// #ifndef MP-WEIXIN || MP-ALIPAY
-// 因为有了 custom:true， 微信里面不需要多余的hide操作
-onLoad(() => {
-  // 解决原生 tabBar 未隐藏导致有2个 tabBar 的问题
-  needHideNativeTabbar
-  && uni.hideTabBar({
-    fail(err) {
-      console.log('hideTabBar fail: ', err)
-    },
-    success(res) {
-      // console.log('hideTabBar success: ', res)
-    },
-  })
-})
-// #endif
-
-// #ifdef MP-ALIPAY
-onMounted(() => {
-  // 解决支付宝自定义tabbar 未隐藏导致有2个 tabBar 的问题; 注意支付宝很特别，需要在 onMounted 钩子调用
-  customTabbarEnable // 另外，支付宝里面，只要是 customTabbar 都需要隐藏
-  && uni.hideTabBar({
-    fail(err) {
-      console.log('hideTabBar fail: ', err)
-    },
-    success(res) {
-      // console.log('hideTabBar success: ', res)
-    },
-  })
-})
-// #endif
-const activeColor = 'var(--wot-color-theme, #1890ff)'
-const inactiveColor = '#666'
-function getColorByIndex(index: number) {
-  return tabbarStore.curIdx === index ? activeColor : inactiveColor
-}
-
-function getImageByIndex(index: number, item: CustomTabBarItem) {
-  if (!item.iconActive) {
-    console.warn('image 模式下，需要配置 iconActive (高亮时的图片），否则无法切换高亮图片')
-    return item.icon
-  }
-  return tabbarStore.curIdx === index ? item.iconActive : item.icon
+  uni.reLaunch({ url })
 }
 </script>
 
 <template>
-  <view v-if="customTabbarEnable" class="tabbar-placeholder">
-    <view class="border-and-fixed bg-white" @touchmove.stop.prevent>
-      <view class="tabbar-main flex items-center">
-        <view
-          v-for="(item, index) in tabbarList" :key="index"
-          class="flex flex-1 flex-col items-center justify-center"
-          :style="{ color: getColorByIndex(index) }"
-          @click="handleClick(index)"
-        >
-          <view v-if="item.isBulge" class="relative">
-            <!-- 中间一个鼓包tabbarItem的处理 -->
-            <view class="bulge">
-              <!-- TODO 2/2: 中间鼓包tabbarItem配置：通常是一个图片，或者icon，点击触发业务逻辑 -->
-              <!-- 常见的是：扫描按钮、发布按钮、更多按钮等 -->
-              <!-- <image class="mt-6rpx h-200rpx w-200rpx" src="/static/tabbar/scan.png" /> -->
-              <view class="flex flex-col items-center justify-center bg-blue-500 text-white rounded-full w-48px h-48px shadow-lg transform -translate-y-1">
-                <view class="i-lucide-calendar-check text-28px"></view>
-              </view>
+  <view class="floating-nav" @touchmove.stop.prevent>
+    <view v-if="expanded" class="floating-panel">
+      <button
+        v-for="item in navItems"
+        :key="item.pagePath"
+        class="nav-action"
+        :class="[currentPath === item.pagePath && 'active']"
+        @tap="goPage(item.pagePath)"
+      >
+        <view :class="item.icon" class="nav-icon" />
+        <text class="nav-label">{{ item.text }}</text>
+      </button>
+    </view>
+
+    <view class="primary-row">
+      <button v-if="expanded" class="mini-action" @tap="closeExpanded">
+        <view class="i-lucide-x mini-icon" />
+      </button>
+
+      <button class="catch-button" @tap="drawBottle">
+        <view class="net-head">
+          <view class="net-mesh net-mesh-a" />
+          <view class="net-mesh net-mesh-b" />
+        </view>
+        <view class="net-handle" />
+        <text class="catch-label">捕捞</text>
+      </button>
+
+      <button class="mini-action" @tap="toggleExpanded">
+        <view class="i-lucide-menu mini-icon" />
+      </button>
+    </view>
+
+    <view v-if="showLoginPrompt" class="login-prompt-overlay" @tap="closeLoginPrompt(false)">
+      <view class="login-prompt" @tap.stop>
+        <view class="prompt-visual">
+          <view class="prompt-bottle">
+            <view class="prompt-cork" />
+            <view class="prompt-glass">
+              <view class="prompt-shine" />
+              <view class="prompt-letter" />
             </view>
           </view>
-          <view v-else class="relative px-3 text-center">
-            <template v-if="item.iconType === 'uiLib'">
-              <!-- TODO: 以下内容请根据选择的UI库自行替换 -->
-              <!-- 如：<wd-icon name="home" /> (https://wot-design-uni.cn/component/icon.html) -->
-              <!-- 如：<uv-icon name="home" /> (https://www.uvui.cn/components/icon.html) -->
-              <!-- 如：<sar-icon name="image" /> (https://sard.wzt.zone/sard-uniapp-docs/components/icon)(sar没有home图标^_^) -->
-              <!-- <wd-icon :name="item.icon" size="20" /> -->
-            </template>
-            <template v-if="item.iconType === 'unocss' || item.iconType === 'iconfont'">
-              <view :class="item.icon" class="text-20px" />
-            </template>
-            <template v-if="item.iconType === 'image'">
-              <image :src="getImageByIndex(index, item)" mode="scaleToFill" class="h-20px w-20px" />
-            </template>
-            <view class="mt-2px text-12px">
-              {{ item.text }}
-            </view>
-            <!-- 角标显示 -->
-            <view v-if="item.badge">
-              <template v-if="item.badge === 'dot'">
-                <view class="absolute right-0 top-0 h-2 w-2 rounded-full bg-#f56c6c" />
-              </template>
-              <template v-else>
-                <view class="absolute top-0 box-border h-5 min-w-5 center rounded-full bg-#f56c6c px-1 text-center text-xs text-white -right-3">
-                  {{ item.badge > 99 ? '99+' : item.badge }}
-                </view>
-              </template>
-            </view>
-          </view>
+          <view class="prompt-ripple" />
+        </view>
+
+        <view class="prompt-copy">
+          <text class="prompt-title">登录后捕捞</text>
+          <text class="prompt-desc">漂来的消息会存进你的听潮小筑，也能继续回信和收藏。</text>
+        </view>
+
+        <view class="prompt-actions">
+          <button class="prompt-btn prompt-btn-ghost" @tap="closeLoginPrompt(false)">
+            暂不登录
+          </button>
+          <button class="prompt-btn prompt-btn-primary" @tap="closeLoginPrompt(true)">
+            立即登录
+          </button>
         </view>
       </view>
-
-      <view class="tabbar-safe-area" />
     </view>
   </view>
 </template>
 
 <style scoped lang="scss">
-.tabbar-placeholder {
-  height: var(--app-tabbar-total-height);
-}
-
-.tabbar-main {
-  height: var(--app-tabbar-height);
-}
-
-.tabbar-safe-area {
-  height: var(--app-safe-area-bottom);
-}
-
-.border-and-fixed {
+.floating-nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  right: 28rpx;
+  bottom: var(--app-floating-nav-bottom);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 18rpx;
+  pointer-events: none;
+}
 
-  border-top: 1px solid #eee;
+.floating-panel,
+.primary-row {
+  pointer-events: auto;
+}
+
+.floating-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: 16rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.68);
+  border-radius: 28rpx;
+  background: rgba(248, 253, 255, 0.9);
+  box-shadow: 0 18rpx 48rpx rgba(0, 61, 96, 0.18);
+  backdrop-filter: blur(20rpx);
+}
+
+.nav-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14rpx;
+  min-width: 180rpx;
+  height: 72rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  border: 1rpx solid rgba(0, 93, 144, 0.08);
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.78);
+  color: #315569;
+  font-size: 25rpx;
+  line-height: 1;
   box-sizing: border-box;
 }
-// 中间鼓包的样式
-.bulge {
+
+.nav-action::after,
+.catch-button::after,
+.mini-action::after {
+  border: 0;
+}
+
+.nav-action.active {
+  border-color: rgba(0, 119, 182, 0.32);
+  background: #e8f7fb;
+  color: #005d90;
+  font-weight: 700;
+}
+
+.nav-icon {
+  width: 34rpx;
+  height: 34rpx;
+  font-size: 34rpx;
+}
+
+.nav-label {
+  white-space: nowrap;
+}
+
+.primary-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 14rpx;
+}
+
+.catch-button,
+.mini-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  box-shadow: 0 18rpx 42rpx rgba(0, 29, 50, 0.24);
+}
+
+.catch-button {
+  position: relative;
+  flex-direction: column;
+  gap: 4rpx;
+  width: 116rpx;
+  height: 116rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.24);
+  border-radius: 26rpx;
+  background: rgba(255, 255, 255, 0.92);
+  color: #005d90;
+  animation: net-float 7s ease-in-out infinite;
+}
+
+.catch-button:active,
+.mini-action:active,
+.nav-action:active {
+  transform: scale(0.96);
+}
+
+.catch-label {
+  color: #005d90;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mini-action {
+  width: 76rpx;
+  height: 76rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.54);
+  border-radius: 999rpx;
+  background: rgba(7, 55, 82, 0.84);
+  color: #fff;
+}
+
+.mini-icon {
+  width: 34rpx;
+  height: 34rpx;
+  font-size: 34rpx;
+}
+
+.net-head {
+  position: relative;
+  width: 48rpx;
+  height: 40rpx;
+  border: 4rpx solid #005d90;
+  border-radius: 50% 50% 44% 44%;
+  transform: rotate(-38deg);
+}
+
+.net-head::after {
   position: absolute;
-  top: -20px;
-  left: 50%;
+  inset: 7rpx;
+  content: '';
+  border-radius: inherit;
+  background: rgba(148, 204, 255, 0.28);
+}
+
+.net-mesh {
+  position: absolute;
+  left: 6rpx;
+  right: 6rpx;
+  z-index: 1;
+  height: 2rpx;
+  background: rgba(0, 93, 144, 0.38);
+}
+
+.net-mesh-a {
+  top: 13rpx;
+}
+
+.net-mesh-b {
+  top: 23rpx;
+}
+
+.net-handle {
+  position: absolute;
+  top: 48rpx;
+  left: 66rpx;
+  width: 8rpx;
+  height: 42rpx;
+  border-radius: 999rpx;
+  background: #8e4e14;
+  transform: rotate(41deg);
   transform-origin: top center;
-  transform: translateX(-50%) scale(0.5) translateY(-33%);
+}
+
+.login-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  background: rgba(0, 20, 36, 0.58);
+  backdrop-filter: blur(14rpx);
+  box-sizing: border-box;
+  pointer-events: auto;
+  animation: prompt-fade-in 0.18s ease-out;
+}
+
+.login-prompt {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 620rpx;
+  padding: 44rpx 38rpx 34rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.28);
+  border-radius: 32rpx;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(173, 232, 244, 0.42), transparent 36%),
+    radial-gradient(circle at 90% 100%, rgba(0, 119, 182, 0.24), transparent 40%),
+    linear-gradient(160deg, rgba(238, 248, 251, 0.94), rgba(244, 250, 253, 0.88));
+  box-shadow:
+    0 28rpx 72rpx rgba(0, 29, 50, 0.34),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.68);
+  box-sizing: border-box;
+  animation: prompt-rise 0.24s ease-out;
+}
+
+.login-prompt::before {
+  position: absolute;
+  top: -120rpx;
+  left: -40rpx;
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.28);
+  content: '';
+  filter: blur(18rpx);
+}
+
+.prompt-visual {
+  position: relative;
   display: flex;
   justify-content: center;
+  height: 154rpx;
+}
+
+.prompt-bottle {
+  position: relative;
+  width: 76rpx;
+  height: 128rpx;
+  transform: rotate(-9deg);
+}
+
+.prompt-cork {
+  width: 24rpx;
+  height: 18rpx;
+  margin: 0 auto -2rpx;
+  border-radius: 6rpx 6rpx 2rpx 2rpx;
+  background: #8e4e14;
+}
+
+.prompt-glass {
+  position: relative;
+  width: 100%;
+  height: 112rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 38rpx 38rpx 24rpx 24rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(148, 204, 255, 0.3));
+  box-shadow:
+    inset 0 0 22rpx rgba(255, 255, 255, 0.38),
+    0 12rpx 28rpx rgba(0, 93, 144, 0.18);
+}
+
+.prompt-shine {
+  position: absolute;
+  top: 18rpx;
+  left: 22rpx;
+  width: 8rpx;
+  height: 56rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.prompt-letter {
+  position: absolute;
+  left: 18rpx;
+  bottom: 24rpx;
+  width: 38rpx;
+  height: 24rpx;
+  border-radius: 4rpx;
+  background: rgba(241, 233, 219, 0.88);
+  transform: rotate(8deg);
+}
+
+.prompt-ripple {
+  position: absolute;
+  left: 50%;
+  bottom: 12rpx;
+  width: 190rpx;
+  height: 18rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(ellipse at center, rgba(0, 119, 182, 0.24), transparent 72%);
+  transform: translateX(-50%);
+}
+
+.prompt-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  width: 250rpx;
-  height: 250rpx;
-  border-radius: 50%;
-  background-color: #fff;
-  box-shadow: inset 0 0 0 1px #fefefe;
+  gap: 14rpx;
+  text-align: center;
+}
+
+.prompt-title {
+  color: #161d1f;
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.prompt-desc {
+  max-width: 470rpx;
+  color: #404850;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.prompt-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+  margin-top: 34rpx;
+}
+
+.prompt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 78rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border-radius: 18rpx;
+  font-size: 27rpx;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.prompt-btn::after {
+  border: 0;
+}
+
+.prompt-btn:active {
+  transform: scale(0.97);
+}
+
+.prompt-btn-ghost {
+  border: 1rpx solid rgba(0, 93, 144, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+  color: #005d90;
+}
+
+.prompt-btn-primary {
+  border: 1rpx solid rgba(0, 93, 144, 0.16);
+  background: linear-gradient(135deg, #0077b6, #005d90);
+  color: #fff;
+  box-shadow: 0 12rpx 26rpx rgba(0, 93, 144, 0.22);
+}
+
+@keyframes net-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-10rpx) rotate(2deg);
+  }
+}
+
+@keyframes prompt-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes prompt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 </style>

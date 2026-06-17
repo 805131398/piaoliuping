@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
+import AppTopbar from '@/components/AppTopbar.vue'
 
 defineOptions({
   name: 'ReadDriftLetter',
@@ -57,7 +58,7 @@ function returnSea() {
     return
   }
 
-  uni.switchTab({ url: '/pages/index/index' })
+  uni.reLaunch({ url: '/pages/index/index' })
 }
 
 function openReport() {
@@ -84,16 +85,7 @@ function submitReport(reason: string) {
     <view class="mist mist-one" />
     <view class="mist mist-two" />
 
-    <view class="topbar">
-      <button class="nav-btn" @tap="returnSea">
-        <view class="i-lucide-x nav-icon" />
-      </button>
-      <view class="label">
-        <view class="i-lucide-droplet label-icon" />
-        <text>来自深海的信息</text>
-      </view>
-      <view class="nav-placeholder" />
-    </view>
+    <AppTopbar title="瓶中" subtitle="来自深海的信息" icon="i-lucide-droplet" variant="transparent" home align="center" :show-icon="false"/>
 
     <view class="content-stage">
       <view class="letter-card">
@@ -228,17 +220,6 @@ function submitReport(reason: string) {
   background: rgba(148, 204, 255, 0.2);
 }
 
-.topbar {
-  flex: 0 0 auto;
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 60rpx;
-  padding-top: var(--status-bar-height);
-}
-
 .content-stage {
   position: relative;
   z-index: 1;
@@ -278,28 +259,6 @@ function submitReport(reason: string) {
 .report-option::after,
 .cancel-option::after {
   border: 0;
-}
-
-.nav-placeholder {
-  width: 56rpx;
-  height: 56rpx;
-}
-
-.label {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  color: rgba(0, 93, 144, 0.68);
-  font-size: 24rpx;
-  font-weight: 700;
-  letter-spacing: 1rpx;
-}
-
-.label-icon {
-  width: 22rpx;
-  height: 22rpx;
-  color: #0077b6;
-  font-size: 22rpx;
 }
 
 .letter-card {

@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref } from 'vue'
+import AppTopbar from '@/components/AppTopbar.vue'
+import { useBottleLoginGuard } from '@/hooks/useBottleLoginGuard'
 
 defineOptions({
   name: 'SeaDiscovery',
@@ -31,15 +33,28 @@ interface Bottle {
   state?: 'enlarging' | 'entering'
   width: number
   height: number
+  left: number
+  top: number
 }
 
 const bottleSlots = [
-  { slot: 'bottle-one', width: 42, height: 72 },
-  { slot: 'bottle-two', width: 34, height: 58 },
-  { slot: 'bottle-three', width: 28, height: 48 },
+  { slot: 'bottle-one', width: 42, height: 72, left: 47, top: 24 },
+  { slot: 'bottle-two', width: 34, height: 58, left: 16, top: 43 },
+  { slot: 'bottle-three', width: 28, height: 48, left: 74, top: 56 },
 ]
 
+const bottleArea = {
+  minLeft: 10,
+  maxLeft: 82,
+  minTop: 18,
+  maxTop: 62,
+}
+const minDistanceFromRemovedBottle = 28
+const minDistanceFromVisibleBottle = 18
+const maxPositionAttempts = 24
+
 const bottles = ref<Bottle[]>(bottleSlots.map((bottle, index) => ({ ...bottle, id: index + 1 })))
+const { showLoginPrompt, closeLoginPrompt, drawBottle } = useBottleLoginGuard()
 let bottleId = bottles.value.length
 let cycleTimer: ReturnType<typeof setTimeout> | undefined
 let enterTimer: ReturnType<typeof setTimeout> | undefined
@@ -61,6 +76,37 @@ function pickRandomBottle() {
   return candidates[Math.floor(Math.random() * candidates.length)]
 }
 
+function getBottleDistance(first: Pick<Bottle, 'left' | 'top'>, second: Pick<Bottle, 'left' | 'top'>) {
+  const leftDistance = first.left - second.left
+  const topDistance = first.top - second.top
+  return Math.sqrt(leftDistance * leftDistance + topDistance * topDistance)
+}
+
+function getRandomBottlePosition() {
+  return {
+    left: bottleArea.minLeft + Math.random() * (bottleArea.maxLeft - bottleArea.minLeft),
+    top: bottleArea.minTop + Math.random() * (bottleArea.maxTop - bottleArea.minTop),
+  }
+}
+
+function pickNextBottlePosition(removedBottle: Bottle) {
+  const visibleBottles = bottles.value.filter(bottle => bottle.id !== removedBottle.id)
+
+  for (let attempt = 0; attempt < maxPositionAttempts; attempt++) {
+    const position = getRandomBottlePosition()
+    const isFarFromRemoved = getBottleDistance(position, removedBottle) >= minDistanceFromRemovedBottle
+    const isFarFromVisible = visibleBottles.every((bottle) => {
+      return getBottleDistance(position, bottle) >= minDistanceFromVisibleBottle
+    })
+
+    if (isFarFromRemoved && isFarFromVisible) {
+      return position
+    }
+  }
+
+  return getRandomBottlePosition()
+}
+
 function refreshBottle() {
   const selectedBottle = pickRandomBottle()
 
@@ -73,24 +119,25 @@ function refreshBottle() {
     ...bottleSlots.find(slot => slot.slot === selectedBottle.slot)!,
     id: ++bottleId,
     state: 'entering' as const,
+    ...pickNextBottlePosition(selectedBottle),
   }
 
-  bottles.value = bottles.value.map((bottle) => {
-    return bottle.id === selectedBottle.id ? { ...bottle, state: 'enlarging' } : bottle
-  })
+  bottles.value = [...bottles.value, nextBottle]
 
   enterTimer = setTimeout(() => {
-    bottles.value = [...bottles.value, nextBottle]
-  }, 3600)
+    bottles.value = bottles.value.map((bottle) => {
+      if (bottle.id === nextBottle.id) {
+        return { ...bottle, state: undefined }
+      }
 
-  removeTimer = setTimeout(() => {
-    bottles.value = bottles.value
-      .filter(bottle => bottle.id !== selectedBottle.id)
-      .map((bottle) => {
-        return bottle.id === nextBottle.id ? { ...bottle, state: undefined } : bottle
-      })
-    scheduleBottleCycle()
-  }, 5200)
+      return bottle.id === selectedBottle.id ? { ...bottle, state: 'enlarging' } : bottle
+    })
+
+    removeTimer = setTimeout(() => {
+      bottles.value = bottles.value.filter(bottle => bottle.id !== selectedBottle.id)
+      scheduleBottleCycle()
+    }, 5200)
+  }, 1600)
 }
 
 function scheduleBottleCycle() {
@@ -105,13 +152,10 @@ onUnmounted(() => {
   clearBottleTimers()
 })
 
-function drawBottle() {
-  uni.navigateTo({ url: '/pages/drift/read' })
-}
 </script>
 
 <template>
-  <view class="sea-page app-tabbar-page">
+  <view class="sea-page">
     <view class="god-rays" />
     <view class="sea-glow sea-glow-left" />
     <view class="sea-glow sea-glow-right" />
@@ -129,27 +173,7 @@ function drawBottle() {
       }"
     />
 
-    <view class="topbar">
-      <view class="brand-wrap">
-        <view class="waves-icon">
-          <view class="wave-line wave-line-a" />
-          <view class="wave-line wave-line-b" />
-          <view class="wave-line wave-line-c" />
-        </view>
-        <view class="brand-copy">
-          <text class="title">沧海拾音</text>
-          <text class="subtitle">听见今日漂来的回声</text>
-        </view>
-      </view>
-
-      <view class="quota">
-        <text class="sail-icon">舟</text>
-        <view class="quota-copy">
-          <text class="quota-label">今日拾贝</text>
-          <text class="quota-count">5/5</text>
-        </view>
-      </view>
-    </view>
+    <AppTopbar title="沧海拾音" subtitle="听见今日漂来的回声" variant="dark" bleed="home" />
 
     <view class="discovery-area">
       <view
@@ -157,7 +181,12 @@ function drawBottle() {
         :key="bottle.id"
         class="drift-bottle"
         :class="[bottle.slot, bottle.state && `bottle-${bottle.state}`]"
-        :style="{ width: `${bottle.width}rpx`, height: `${bottle.height}rpx` }"
+        :style="{
+          width: `${bottle.width}rpx`,
+          height: `${bottle.height}rpx`,
+          left: `${bottle.left}%`,
+          top: `${bottle.top}%`,
+        }"
         @tap="drawBottle"
       >
         <view class="bottle-figure">
@@ -175,13 +204,34 @@ function drawBottle() {
       </view>
     </view>
 
-    <button class="net-button" @tap="drawBottle">
-      <view class="net-head">
-        <view class="net-mesh net-mesh-a" />
-        <view class="net-mesh net-mesh-b" />
+    <view v-if="showLoginPrompt" class="login-prompt-overlay" @tap="closeLoginPrompt(false)">
+      <view class="login-prompt" @tap.stop>
+        <view class="prompt-visual">
+          <view class="prompt-bottle">
+            <view class="prompt-cork" />
+            <view class="prompt-glass">
+              <view class="prompt-shine" />
+              <view class="prompt-letter" />
+            </view>
+          </view>
+          <view class="prompt-ripple" />
+        </view>
+
+        <view class="prompt-copy">
+          <text class="prompt-title">登录后捕捞</text>
+          <text class="prompt-desc">漂来的消息会存进你的听潮小筑，也能继续回信和收藏。</text>
+        </view>
+
+        <view class="prompt-actions">
+          <button class="prompt-btn prompt-btn-ghost" @tap="closeLoginPrompt(false)">
+            暂不登录
+          </button>
+          <button class="prompt-btn prompt-btn-primary" @tap="closeLoginPrompt(true)">
+            立即登录
+          </button>
+        </view>
       </view>
-      <view class="net-handle" />
-    </button>
+    </view>
   </view>
 </template>
 
@@ -253,136 +303,10 @@ function drawBottle() {
   animation: bubble-rise 10s ease-in infinite;
 }
 
-.topbar {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28rpx;
-  min-height: 156rpx;
-  margin: 0 -24rpx;
-  padding: calc(var(--status-bar-height) + 22rpx) 218rpx 24rpx 30rpx;
-  border-bottom: 1rpx solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
-  backdrop-filter: blur(20rpx);
-}
-
-.brand-wrap,
-.quota {
-  display: flex;
-  align-items: center;
-}
-
-.brand-wrap {
-  gap: 14rpx;
-  flex: 1;
-  min-width: 0;
-}
-
-.waves-icon {
-  position: relative;
-  flex: 0 0 auto;
-  width: 34rpx;
-  height: 28rpx;
-}
-
-.wave-line {
-  position: absolute;
-  left: 0;
-  width: 32rpx;
-  height: 7rpx;
-  border: 3rpx solid rgba(255, 255, 255, 0.9);
-  border-top: 0;
-  border-left-color: transparent;
-  border-right-color: transparent;
-  border-radius: 999rpx;
-}
-
-.wave-line-a {
-  top: 0;
-}
-
-.wave-line-b {
-  top: 10rpx;
-  left: 4rpx;
-}
-
-.wave-line-c {
-  top: 20rpx;
-}
-
-.title {
-  color: #fff;
-  font-size: 40rpx;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.brand-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.subtitle {
-  color: rgba(218, 242, 255, 0.76);
-  font-size: 21rpx;
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.quota {
-  flex: 0 0 auto;
-  gap: 12rpx;
-  min-width: 128rpx;
-  height: 58rpx;
-  padding: 0 18rpx 0 16rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.2);
-  border-radius: 18rpx;
-  background: rgba(6, 35, 63, 0.24);
-  color: rgba(255, 255, 255, 0.88);
-  box-sizing: border-box;
-  backdrop-filter: blur(20rpx);
-}
-
-.sail-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34rpx;
-  height: 34rpx;
-  border-radius: 999rpx;
-  background: rgba(148, 204, 255, 0.18);
-  color: #a9d8ff;
-  font-size: 20rpx;
-  font-weight: 700;
-}
-
-.quota-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-  line-height: 1.1;
-}
-
-.quota-label {
-  color: rgba(218, 242, 255, 0.68);
-  font-size: 18rpx;
-  font-weight: 500;
-}
-
-.quota-count {
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: 700;
-}
-
 .discovery-area {
   position: relative;
   z-index: 5;
-  min-height: calc(100vh - var(--app-tabbar-total-height) - 292rpx - var(--status-bar-height));
+  min-height: calc(100vh - 292rpx - var(--status-bar-height));
 }
 
 .drift-bottle {
@@ -395,11 +319,14 @@ function drawBottle() {
 
 .bottle-figure {
   position: relative;
+  --bottle-scale: 1;
+  --bottle-enter-scale: 0.62;
   width: 100%;
   height: 100%;
   padding-top: 8rpx;
   box-sizing: content-box;
   transform-origin: 50% 68%;
+  transform: scale(var(--bottle-scale));
 }
 
 .bottle-enlarging {
@@ -423,16 +350,12 @@ function drawBottle() {
 }
 
 .bottle-one {
-  top: 24%;
-  left: 47%;
   animation-delay:
     -2s,
     -1s;
 }
 
 .bottle-two {
-  top: 43%;
-  left: 16%;
   opacity: 0.54;
   animation-duration: 24s, 8s;
   animation-delay:
@@ -441,12 +364,11 @@ function drawBottle() {
 }
 
 .bottle-two .bottle-figure {
-  transform: scale(0.82);
+  --bottle-scale: 0.82;
+  --bottle-enter-scale: 0.51;
 }
 
 .bottle-three {
-  top: 56%;
-  right: 18%;
   opacity: 0.48;
   animation-duration: 28s, 7s;
   animation-delay:
@@ -455,7 +377,8 @@ function drawBottle() {
 }
 
 .bottle-three .bottle-figure {
-  transform: scale(0.72);
+  --bottle-scale: 0.72;
+  --bottle-enter-scale: 0.45;
 }
 
 .bottle-cork {
@@ -532,75 +455,184 @@ function drawBottle() {
   line-height: 1.5;
 }
 
-.net-button {
+.login-prompt-overlay {
   position: fixed;
-  right: 38rpx;
-  bottom: 248rpx;
-  z-index: 30;
+  inset: 0;
+  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 104rpx;
-  height: 104rpx;
-  padding: 0;
-  border: 1rpx solid rgba(255, 255, 255, 0.16);
-  border-radius: 12rpx;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 16rpx 40rpx rgba(0, 29, 50, 0.24);
-  animation: net-float 7s ease-in-out infinite;
+  padding: 48rpx;
+  background: rgba(0, 20, 36, 0.58);
+  backdrop-filter: blur(14rpx);
+  box-sizing: border-box;
+  animation: prompt-fade-in 0.18s ease-out;
 }
 
-.net-button::after {
+.login-prompt {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 620rpx;
+  padding: 44rpx 38rpx 34rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.28);
+  border-radius: 32rpx;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(173, 232, 244, 0.42), transparent 36%),
+    radial-gradient(circle at 90% 100%, rgba(0, 119, 182, 0.24), transparent 40%),
+    linear-gradient(160deg, rgba(238, 248, 251, 0.94), rgba(244, 250, 253, 0.88));
+  box-shadow:
+    0 28rpx 72rpx rgba(0, 29, 50, 0.34),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.68);
+  box-sizing: border-box;
+  animation: prompt-rise 0.24s ease-out;
+}
+
+.login-prompt::before {
+  position: absolute;
+  top: -120rpx;
+  left: -40rpx;
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.28);
+  content: '';
+  filter: blur(18rpx);
+}
+
+.prompt-visual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: 154rpx;
+}
+
+.prompt-bottle {
+  position: relative;
+  width: 76rpx;
+  height: 128rpx;
+  transform: rotate(-9deg);
+}
+
+.prompt-cork {
+  width: 24rpx;
+  height: 18rpx;
+  margin: 0 auto -2rpx;
+  border-radius: 6rpx 6rpx 2rpx 2rpx;
+  background: #8e4e14;
+}
+
+.prompt-glass {
+  position: relative;
+  width: 100%;
+  height: 112rpx;
+  overflow: hidden;
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 38rpx 38rpx 24rpx 24rpx;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(148, 204, 255, 0.3));
+  box-shadow:
+    inset 0 0 22rpx rgba(255, 255, 255, 0.38),
+    0 12rpx 28rpx rgba(0, 93, 144, 0.18);
+}
+
+.prompt-shine {
+  position: absolute;
+  top: 18rpx;
+  left: 22rpx;
+  width: 8rpx;
+  height: 56rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.prompt-letter {
+  position: absolute;
+  left: 18rpx;
+  bottom: 24rpx;
+  width: 38rpx;
+  height: 24rpx;
+  border-radius: 4rpx;
+  background: rgba(241, 233, 219, 0.88);
+  transform: rotate(8deg);
+}
+
+.prompt-ripple {
+  position: absolute;
+  left: 50%;
+  bottom: 12rpx;
+  width: 190rpx;
+  height: 18rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(ellipse at center, rgba(0, 119, 182, 0.24), transparent 72%);
+  transform: translateX(-50%);
+}
+
+.prompt-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+  text-align: center;
+}
+
+.prompt-title {
+  color: #161d1f;
+  font-size: 38rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.prompt-desc {
+  max-width: 470rpx;
+  color: #404850;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
+
+.prompt-actions {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18rpx;
+  margin-top: 34rpx;
+}
+
+.prompt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 78rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border-radius: 18rpx;
+  font-size: 27rpx;
+  font-weight: 700;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.prompt-btn::after {
   border: 0;
 }
 
-.net-button:active {
-  transform: scale(0.94);
+.prompt-btn:active {
+  transform: scale(0.97);
 }
 
-.net-head {
-  position: relative;
-  width: 48rpx;
-  height: 40rpx;
-  border: 4rpx solid #005d90;
-  border-radius: 50% 50% 44% 44%;
-  transform: rotate(-38deg);
+.prompt-btn-ghost {
+  border: 1rpx solid rgba(0, 93, 144, 0.14);
+  background: rgba(255, 255, 255, 0.58);
+  color: #005d90;
 }
 
-.net-head::after {
-  position: absolute;
-  inset: 7rpx;
-  content: '';
-  border-radius: inherit;
-  background: rgba(148, 204, 255, 0.28);
-}
-
-.net-mesh {
-  position: absolute;
-  left: 6rpx;
-  right: 6rpx;
-  z-index: 1;
-  height: 2rpx;
-  background: rgba(0, 93, 144, 0.38);
-}
-
-.net-mesh-a {
-  top: 13rpx;
-}
-
-.net-mesh-b {
-  top: 23rpx;
-}
-
-.net-handle {
-  width: 8rpx;
-  height: 58rpx;
-  margin-left: -10rpx;
-  margin-top: 36rpx;
-  border-radius: 999rpx;
-  background: #8e4e14;
-  transform: rotate(41deg);
-  transform-origin: top center;
+.prompt-btn-primary {
+  border: 1rpx solid rgba(0, 93, 144, 0.16);
+  background: linear-gradient(135deg, #0077b6, #005d90);
+  color: #fff;
+  box-shadow: 0 12rpx 26rpx rgba(0, 93, 144, 0.22);
 }
 
 @keyframes rays-rotate {
@@ -687,12 +719,12 @@ function drawBottle() {
 @keyframes bottle-enter {
   0% {
     opacity: 0;
-    transform: translate3d(18rpx, 22rpx, 0) scale(0.62);
+    transform: translate3d(18rpx, 22rpx, 0) scale(var(--bottle-enter-scale));
   }
 
   100% {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(var(--bottle-scale));
   }
 }
 
@@ -719,26 +751,25 @@ function drawBottle() {
   }
 }
 
-@keyframes net-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
+@keyframes prompt-fade-in {
+  from {
+    opacity: 0;
   }
 
-  50% {
-    transform: translateY(-14rpx) rotate(3deg);
+  to {
+    opacity: 1;
   }
 }
 
-@media (min-width: 600px) {
-  .sea-page {
-    max-width: 780rpx;
-    margin: 0 auto;
+@keyframes prompt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx) scale(0.98);
   }
 
-  .topbar {
-    max-width: 780rpx;
-    margin: 0 auto;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 </style>

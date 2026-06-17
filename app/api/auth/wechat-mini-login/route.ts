@@ -42,8 +42,8 @@ async function getWechatConfig() {
   });
 
   return {
-    appId: appIdConfig?.value || process.env.WECHAT_MINIPROGRAM_APPID,
-    appSecret: appSecretConfig?.value || process.env.WECHAT_MINIPROGRAM_SECRET,
+    appId: appIdConfig?.value || process.env.WECHAT_MINI_APPID || process.env.WECHAT_MINIPROGRAM_APPID,
+    appSecret: appSecretConfig?.value || process.env.WECHAT_MINI_SECRET || process.env.WECHAT_MINIPROGRAM_SECRET,
   };
 }
 

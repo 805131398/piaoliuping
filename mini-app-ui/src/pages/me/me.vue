@@ -2,6 +2,7 @@
 import { onShow } from '@dcloudio/uni-app'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
+import AppTopbar from '@/components/AppTopbar.vue'
 import { useUserStore } from '@/store'
 import { useTokenStore } from '@/store/token'
 
@@ -11,6 +12,7 @@ defineOptions({
 
 definePage({
   style: {
+    navigationStyle: 'custom',
     navigationBarTitleText: '听潮小筑',
     navigationBarBackgroundColor: '#eef8fb',
     navigationBarTextStyle: 'black',
@@ -54,6 +56,8 @@ async function handleLogout() {
 
 <template>
   <view class="me-page">
+    <AppTopbar title="听潮小筑" subtitle="账号与私藏" icon="i-lucide-user-round" variant="transparent" />
+
     <view class="profile-card">
       <image class="avatar" :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
       <view class="profile-main">
@@ -127,7 +131,7 @@ async function handleLogout() {
 <style scoped lang="scss">
 .me-page {
   min-height: 100vh;
-  padding: 30rpx 28rpx 64rpx;
+  padding: 0 28rpx 64rpx;
   background:
     radial-gradient(circle at 80% 2%, rgba(148, 204, 255, 0.34), transparent 32%),
     linear-gradient(180deg, #ade8f4 0%, #f4fafd 50%, #f1e9db 100%);
