@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: [
+    '139.129.208.121',
+  ],
   output: 'standalone',
   // 将 ali-oss 及其依赖标记为外部包，避免 Webpack 打包破坏动态加载
   serverExternalPackages: ['ali-oss', 'urllib', 'proxy-agent', 'vm2'],

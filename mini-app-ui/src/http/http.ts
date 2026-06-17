@@ -99,10 +99,13 @@ export function http<T>(options: CustomRequestOptions) {
           const bizCode = payload?.code
           // 处理业务逻辑错误（仅当存在业务码字段时才处理）
           if (typeof bizCode !== 'undefined' && bizCode !== ResultEnum.Success0 && bizCode !== ResultEnum.Success200) {
-            uni.showToast({
+            !options.hideErrorToast && uni.showToast({
               icon: 'none',
               title: payload.msg || payload.message || '请求错误',
             })
+          }
+          if (options.rawResponse) {
+            return resolve(payload)
           }
           const result = Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload
           return resolve(result)

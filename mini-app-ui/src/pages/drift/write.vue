@@ -1,6 +1,10 @@
 <script lang="ts" setup>
+import type { DriftBottleMood, DriftContentType } from '@/api/drift'
 import { ref } from 'vue'
+import { throwDriftBottle } from '@/api/drift'
 import AppTopbar from '@/components/AppTopbar.vue'
+import { useTokenStore } from '@/store/token'
+import { getEnvBaseUrl } from '@/utils'
 
 defineOptions({
   name: 'WriteDriftLetter',
@@ -18,6 +22,11 @@ definePage({
 const letterContent = ref('')
 const mood = ref('开心')
 const moods = ['开心', '孤独', '好奇']
+const moodValueMap: Record<string, DriftBottleMood> = {
+  开心: 'HAPPY',
+  孤独: 'LONELY',
+  好奇: 'CURIOUS',
+}
 const showDistance = ref(false)
 const maxVoiceDuration = 60
 const recorderManager = uni.getRecorderManager()
@@ -29,13 +38,26 @@ const isVoicePlaying = ref(false)
 const voicePlayingSeconds = ref(0)
 const voicePlayingProgress = ref(0)
 const imageFilePath = ref('')
+const isSubmitting = ref(false)
 let recordingTimer: ReturnType<typeof setInterval> | undefined
 let voicePlayer: UniNamespace.InnerAudioContext | undefined
 let voicePlayingTimer: ReturnType<typeof setInterval> | undefined
+const tokenStore = useTokenStore()
 
 interface VoiceRecordResult {
   tempFilePath?: string
   duration?: number
+}
+
+interface UploadResponse {
+  code?: number
+  msg?: string
+  message?: string
+  url?: string
+  data?: {
+    url?: string
+    fileUrl?: string
+  }
 }
 
 function formatDuration(seconds: number) {
@@ -232,6 +254,68 @@ function toggleDistance() {
   showDistance.value = !showDistance.value
 }
 
+function getUploadUrl() {
+  return `${getEnvBaseUrl()}/api/system/file/upload`
+}
+
+function getUploadToken() {
+  return tokenStore.validToken
+}
+
+function uploadBottleFile(filePath: string) {
+  return new Promise<string>((resolve, reject) => {
+    const token = getUploadToken()
+
+    uni.uploadFile({
+      url: getUploadUrl(),
+      filePath,
+      name: 'file',
+      header: token ? { Authorization: `Bearer ${token}` } : undefined,
+      success: (res) => {
+        try {
+          const body = JSON.parse(res.data || '{}') as UploadResponse
+
+          if (res.statusCode < 200 || res.statusCode >= 300 || (body.code && body.code !== 200 && body.code !== 0)) {
+            reject(new Error(body.msg || body.message || '文件上传失败'))
+            return
+          }
+
+          const fileUrl = body.url || body.data?.url || body.data?.fileUrl
+
+          if (!fileUrl) {
+            reject(new Error('上传结果缺少文件地址'))
+            return
+          }
+
+          resolve(fileUrl)
+        }
+        catch (error) {
+          reject(error)
+        }
+      },
+      fail: () => reject(new Error('文件上传失败')),
+    })
+  })
+}
+
+function getBottleContentType(): DriftContentType {
+  if (voiceFilePath.value)
+    return 'VOICE'
+
+  if (imageFilePath.value)
+    return 'IMAGE'
+
+  return 'TEXT'
+}
+
+function resetBottleForm() {
+  letterContent.value = ''
+  mood.value = moods[0]
+  showDistance.value = false
+  imageFilePath.value = ''
+  resetVoiceRecord()
+}
+
 recorderManager.onStart(() => {
   isRecording.value = true
   startRecordingTimer()
@@ -266,13 +350,69 @@ onUnload(() => {
     recorderManager.stop()
 })
 
-function submitBottle() {
+async function submitBottle() {
+  if (isSubmitting.value)
+    return
+
   if (!letterContent.value.trim() && !voiceFilePath.value && !imageFilePath.value) {
     uni.showToast({ title: '请至少留下一段内容', icon: 'none' })
     return
   }
 
-  uni.showToast({ title: '已投递', icon: 'success' })
+  if (voiceFilePath.value && imageFilePath.value) {
+    uni.showToast({ title: '语音和图片暂时只能选一个', icon: 'none' })
+    return
+  }
+
+  const token = await tokenStore.tryGetValidToken()
+  if (!token) {
+    uni.showToast({ title: '请先登录后投递', icon: 'none' })
+    setTimeout(() => {
+      uni.navigateTo({ url: `/pages-fg/login/login?redirect=${encodeURIComponent('/pages/drift/write')}` })
+    }, 600)
+    return
+  }
+
+  const contentType = getBottleContentType()
+  isSubmitting.value = true
+  uni.showLoading({ title: contentType === 'TEXT' ? '投递中...' : '上传中...' })
+
+  try {
+    let mediaUrl = ''
+
+    if (contentType === 'VOICE') {
+      mediaUrl = await uploadBottleFile(voiceFilePath.value)
+    }
+    else if (contentType === 'IMAGE') {
+      mediaUrl = await uploadBottleFile(imageFilePath.value)
+    }
+
+    uni.showLoading({ title: '投递中...' })
+
+    await throwDriftBottle({
+      contentType,
+      textContent: letterContent.value.trim(),
+      mediaUrl: mediaUrl || undefined,
+      mediaDurationSec: contentType === 'VOICE' ? voiceDuration.value : undefined,
+      mood: moodValueMap[mood.value],
+      isAnonymous: true,
+      showDistance: showDistance.value,
+    })
+
+    uni.hideLoading()
+    uni.showToast({ title: '已投递', icon: 'success' })
+    resetBottleForm()
+  }
+  catch (error) {
+    uni.hideLoading()
+    uni.showToast({
+      title: error instanceof Error ? error.message : '投递失败，请重试',
+      icon: 'none',
+    })
+  }
+  finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -361,8 +501,9 @@ function submitBottle() {
       </view>
     </view>
 
-    <button class="send-btn" @tap="submitBottle">
-      投递漂流瓶
+    <button class="send-btn" :class="[isSubmitting && 'loading']" :disabled="isSubmitting" @tap="submitBottle">
+      <view :class="isSubmitting ? 'i-lucide-loader-2' : 'i-lucide-send'" class="send-icon" />
+      <text>{{ isSubmitting ? '投递中' : '投递漂流瓶' }}</text>
     </button>
   </view>
 </template>
@@ -700,6 +841,10 @@ function submitBottle() {
 }
 
 .send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
   height: 96rpx;
   margin-top: 34rpx;
   border-radius: 26rpx;
@@ -711,6 +856,23 @@ function submitBottle() {
   box-shadow: 0 18rpx 44rpx rgba(0, 119, 182, 0.22);
 }
 
+.send-btn::after {
+  border: 0;
+}
+
+.send-btn.loading {
+  opacity: 0.82;
+}
+
+.send-icon {
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.send-btn.loading .send-icon {
+  animation: submit-spin 0.9s linear infinite;
+}
+
 @keyframes voice-wave {
   0%,
   100% {
@@ -719,6 +881,12 @@ function submitBottle() {
 
   50% {
     height: 40rpx;
+  }
+}
+
+@keyframes submit-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

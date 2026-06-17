@@ -1,5 +1,6 @@
 import path from 'node:path'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import Uni from '@uni-helper/plugin-uni'
 import Components from '@uni-helper/vite-plugin-uni-components'
 // @see https://uni-helper.js.org/vite-plugin-uni-layouts
@@ -27,6 +28,8 @@ import ViteRestart from 'vite-plugin-restart'
 import openDevTools from './scripts/open-dev-tools'
 import { createCopyNativeResourcesPlugin } from './vite-plugins/copy-native-resources'
 import syncManifestPlugin from './vite-plugins/sync-manifest-plugins'
+
+const configDir = path.dirname(fileURLToPath(import.meta.url))
 
 function requireEnv(env: Record<string, string | undefined>, keys: string[], platform?: string) {
   const missing = keys.filter(key => !env[key])
@@ -66,11 +69,13 @@ export default defineConfig(({ command, mode }) => {
   const { UNI_PLATFORM } = process.env
   console.log('UNI_PLATFORM -> ', UNI_PLATFORM) // 得到 mp-weixin, h5, app 等
 
-  const envDir = path.resolve(process.cwd(), 'env')
+  const envDir = path.resolve(configDir, 'env')
+  const defaultServerBaseUrl = mode === 'development' ? 'http://127.0.0.1:3000' : ''
   const env = {
     VITE_APP_PORT: '9000',
     VITE_APP_TITLE: '漂流瓶',
     VITE_APP_PUBLIC_BASE: '/',
+    VITE_SERVER_BASEURL: defaultServerBaseUrl,
     VITE_APP_PROXY_ENABLE: 'false',
     VITE_APP_PROXY_PREFIX: '/api',
     VITE_DELETE_CONSOLE: 'false',
@@ -100,7 +105,7 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return defineConfig({
-    envDir: './env', // 自定义env目录
+    envDir, // 自定义env目录
     base: VITE_APP_PUBLIC_BASE,
     plugins: [
       UniLayouts(),
@@ -190,7 +195,7 @@ export default defineConfig(({ command, mode }) => {
       openDevTools(),
     ],
     define: {
-      __VITE_APP_PROXY__: JSON.stringify(proxyEnabled),
+      '__VITE_APP_PROXY__': JSON.stringify(proxyEnabled),
       'import.meta.env.VITE_APP_PROXY_ENABLE': JSON.stringify(VITE_APP_PROXY_ENABLE),
       'import.meta.env.VITE_APP_PROXY_PREFIX': JSON.stringify(VITE_APP_PROXY_PREFIX),
       'import.meta.env.VITE_SERVER_BASEURL': JSON.stringify(VITE_SERVER_BASEURL || ''),
