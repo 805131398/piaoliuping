@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
 import { useBottleLoginGuard } from '@/hooks/useBottleLoginGuard'
+import { useTokenStore } from '@/store/token'
 import { currRoute } from '@/utils'
 import { customTabbarList } from './config'
 
@@ -11,13 +12,13 @@ defineOptions({
 })
 // #endif
 
-const expanded = ref(false)
 const currentPath = ref('/pages/index/index')
 const {
   showLoginPrompt,
   closeLoginPrompt,
   drawBottle: guardedDrawBottle,
 } = useBottleLoginGuard()
+const tokenStore = useTokenStore()
 
 const navItems = computed(() => {
   return customTabbarList.map(item => ({
@@ -32,25 +33,49 @@ onShow(() => {
   currentPath.value = path === '/' ? '/pages/index/index' : path
 })
 
-function toggleExpanded() {
-  expanded.value = !expanded.value
-}
-
-function closeExpanded() {
-  expanded.value = false
-}
-
 function drawBottle() {
-  closeExpanded()
   guardedDrawBottle()
+}
+
+async function loginBeforeMe() {
+  // #ifdef MP-WEIXIN
+  await tokenStore.wxLogin()
+  return true
+  // #endif
+
+  // #ifndef MP-WEIXIN
+  uni.navigateTo({
+    url: `/pages-fg/login/login?redirect=${encodeURIComponent('/pages/me/me')}`,
+  })
+  return false
+  // #endif
+}
+
+async function goMe() {
+  if (currentPath.value === '/pages/me/me') {
+    return
+  }
+
+  if (tokenStore.hasLogin) {
+    uni.reLaunch({ url: '/pages/me/me' })
+    return
+  }
+
+  try {
+    const loggedIn = await loginBeforeMe()
+    if (loggedIn) {
+      uni.reLaunch({ url: '/pages/me/me' })
+    }
+  }
+  catch (error) {
+    console.error('进入我的页面前登录失败:', error)
+  }
 }
 
 function goPage(url?: string) {
   if (!url) {
     return
   }
-
-  closeExpanded()
 
   if (currentPath.value === url) {
     return
@@ -62,25 +87,19 @@ function goPage(url?: string) {
 
 <template>
   <view class="floating-nav" @touchmove.stop.prevent>
-    <view v-if="expanded" class="floating-panel">
+    <view class="action-row">
       <button
         v-for="item in navItems"
         :key="item.pagePath"
-        class="nav-action"
+        class="float-card nav-card"
         :class="[currentPath === item.pagePath && 'active']"
         @tap="goPage(item.pagePath)"
       >
         <view :class="item.icon" class="nav-icon" />
         <text class="nav-label">{{ item.text }}</text>
       </button>
-    </view>
 
-    <view class="primary-row">
-      <button v-if="expanded" class="mini-action" @tap="closeExpanded">
-        <view class="i-lucide-x mini-icon" />
-      </button>
-
-      <button class="catch-button" @tap="drawBottle">
+      <button class="float-card catch-button" @tap="drawBottle">
         <view class="net-head">
           <view class="net-mesh net-mesh-a" />
           <view class="net-mesh net-mesh-b" />
@@ -89,8 +108,12 @@ function goPage(url?: string) {
         <text class="catch-label">捕捞</text>
       </button>
 
-      <button class="mini-action" @tap="toggleExpanded">
-        <view class="i-lucide-menu mini-icon" />
+      <button v-if="tokenStore.hasLogin" class="float-card mine-button" :class="[currentPath === '/pages/me/me' && 'active']" @tap="goMe">
+        <view class="mine-avatar">
+          <view class="mine-head" />
+          <view class="mine-shoulders" />
+        </view>
+        <text class="catch-label">我的</text>
       </button>
     </view>
 
@@ -132,54 +155,25 @@ function goPage(url?: string) {
   bottom: var(--app-floating-nav-bottom);
   z-index: 80;
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 18rpx;
   pointer-events: none;
 }
 
-.floating-panel,
-.primary-row {
+.action-row {
   pointer-events: auto;
 }
 
-.floating-panel {
+.action-row {
   display: flex;
-  flex-direction: column;
+  align-items: flex-end;
   gap: 14rpx;
-  padding: 16rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.68);
-  border-radius: 28rpx;
-  background: rgba(248, 253, 255, 0.9);
-  box-shadow: 0 18rpx 48rpx rgba(0, 61, 96, 0.18);
-  backdrop-filter: blur(20rpx);
 }
 
-.nav-action {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14rpx;
-  min-width: 180rpx;
-  height: 72rpx;
-  margin: 0;
-  padding: 0 22rpx;
-  border: 1rpx solid rgba(0, 93, 144, 0.08);
-  border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.78);
-  color: #315569;
-  font-size: 25rpx;
-  line-height: 1;
-  box-sizing: border-box;
-}
-
-.nav-action::after,
-.catch-button::after,
-.mini-action::after {
+.float-card::after {
   border: 0;
 }
 
-.nav-action.active {
+.float-card.active {
   border-color: rgba(0, 119, 182, 0.32);
   background: #e8f7fb;
   color: #005d90;
@@ -187,47 +181,66 @@ function goPage(url?: string) {
 }
 
 .nav-icon {
-  width: 34rpx;
-  height: 34rpx;
-  font-size: 34rpx;
+  width: 44rpx;
+  height: 44rpx;
+  font-size: 44rpx;
 }
 
 .nav-label {
+  color: #005d90;
+  font-size: 20rpx;
+  font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
 }
 
-.primary-row {
-  display: flex;
-  align-items: flex-end;
-  gap: 14rpx;
-}
-
-.catch-button,
-.mini-action {
+.float-card {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0;
-  padding: 0;
-  box-shadow: 0 18rpx 42rpx rgba(0, 29, 50, 0.24);
-}
-
-.catch-button {
-  position: relative;
   flex-direction: column;
   gap: 4rpx;
   width: 116rpx;
   height: 116rpx;
+  margin: 0;
+  padding: 0;
   border: 1rpx solid rgba(255, 255, 255, 0.24);
   border-radius: 26rpx;
   background: rgba(255, 255, 255, 0.92);
   color: #005d90;
+  box-shadow: 0 18rpx 42rpx rgba(0, 29, 50, 0.24);
   animation: net-float 7s ease-in-out infinite;
 }
 
-.catch-button:active,
-.mini-action:active,
-.nav-action:active {
+.nav-card {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(232, 247, 251, 0.9));
+}
+
+.nav-card:nth-child(1) {
+  animation-delay: -0.8s;
+}
+
+.nav-card:nth-child(2) {
+  animation-delay: -1.9s;
+}
+
+.nav-card:nth-child(3) {
+  animation-delay: -2.8s;
+}
+
+.mine-button {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(232, 247, 251, 0.92));
+  animation-delay: -1.6s;
+}
+
+.mine-button.active {
+  border-color: rgba(0, 119, 182, 0.34);
+  background: #e8f7fb;
+}
+
+.float-card:active {
   transform: scale(0.96);
 }
 
@@ -238,19 +251,36 @@ function goPage(url?: string) {
   line-height: 1;
 }
 
-.mini-action {
-  width: 76rpx;
-  height: 76rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.54);
-  border-radius: 999rpx;
-  background: rgba(7, 55, 82, 0.84);
-  color: #fff;
+.mine-avatar {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
 }
 
-.mini-icon {
-  width: 34rpx;
-  height: 34rpx;
-  font-size: 34rpx;
+.mine-head {
+  position: absolute;
+  top: 4rpx;
+  left: 50%;
+  width: 22rpx;
+  height: 22rpx;
+  border: 4rpx solid #005d90;
+  border-radius: 999rpx;
+  background: rgba(148, 204, 255, 0.2);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
+.mine-shoulders {
+  position: absolute;
+  left: 50%;
+  bottom: 4rpx;
+  width: 40rpx;
+  height: 24rpx;
+  border: 4rpx solid #005d90;
+  border-bottom: 0;
+  border-radius: 24rpx 24rpx 8rpx 8rpx;
+  transform: translateX(-50%);
+  box-sizing: border-box;
 }
 
 .net-head {

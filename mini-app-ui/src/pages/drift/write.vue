@@ -370,7 +370,7 @@ function submitBottle() {
 <style scoped lang="scss">
 .write-page {
   min-height: 100vh;
-  padding: 0 28rpx 128rpx;
+  padding: 0 28rpx calc(var(--app-floating-nav-clearance) + 128rpx);
   background:
     radial-gradient(circle at 88% 4%, rgba(244, 162, 97, 0.2), transparent 30%),
     linear-gradient(180deg, #ade8f4 0%, #f4fafd 54%, #f1e9db 100%);
@@ -388,7 +388,7 @@ function submitBottle() {
 .rich-editor {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - var(--status-bar-height) - 430rpx);
+  max-height: calc(100vh - var(--status-bar-height) - var(--app-floating-nav-clearance) - 430rpx);
   overflow: hidden;
   border: 1rpx solid rgba(188, 154, 102, 0.28);
   border-radius: 28rpx;
@@ -408,17 +408,17 @@ function submitBottle() {
 .editor-body {
   flex: 1 1 auto;
   min-height: 300rpx;
-  max-height: calc(100vh - var(--status-bar-height) - 534rpx);
+  max-height: calc(100vh - var(--status-bar-height) - var(--app-floating-nav-clearance) - 534rpx);
   box-sizing: border-box;
 }
 
 /* #ifdef MP-WEIXIN */
 .rich-editor {
-  max-height: calc(100vh - var(--status-bar-height) - 480rpx);
+  max-height: calc(100vh - var(--status-bar-height) - var(--app-floating-nav-clearance) - 480rpx);
 }
 
 .editor-body {
-  max-height: calc(100vh - var(--status-bar-height) - 584rpx);
+  max-height: calc(100vh - var(--status-bar-height) - var(--app-floating-nav-clearance) - 584rpx);
 }
 /* #endif */
 

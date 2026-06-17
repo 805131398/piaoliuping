@@ -21,6 +21,8 @@ page {
   --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --app-tabbar-total-height: calc(var(--app-tabbar-height) + var(--app-safe-area-bottom));
   --app-floating-nav-bottom: calc(36rpx + env(safe-area-inset-bottom, 0px));
+  --app-floating-nav-size: 116rpx;
+  --app-floating-nav-clearance: calc(var(--app-floating-nav-bottom) + var(--app-floating-nav-size) + 28rpx);
 }
 
 .app-tabbar-page {

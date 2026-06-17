@@ -4,7 +4,7 @@ import FgTabbar from '@/tabbar/index.vue'
 import { currRoute } from './utils'
 
 const isCurrentPageTabbar = ref(true)
-const floatingNavPages = ['/pages/index/index', '/pages/drift/write', '/pages/drift/shelf']
+const floatingNavPages = ['/pages/index/index', '/pages/drift/write', '/pages/drift/shelf', '/pages/me/me']
 
 onShow(() => {
   console.log('App.ku.vue onShow', currRoute())
